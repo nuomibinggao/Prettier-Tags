@@ -1,13 +1,13 @@
 /* 
 https://github.com/nuomibinggao/Prettier-Tags
-Version Zero 1.1
+Version Zero Release 1
 */
 
 import './Impl'
 use(
     'Accuracy','XAccuracy',
     'CurMinute','CurSecond','TotalMinute','TotalSecond',
-    'PHex','EPHex','VEHex','TEHex','FOHex','MPHex','CP','CEP','CLP','CTE','CTL','CVE','CVL','CELP','CV','MissCount','Overloads','Multipress','CHitRaw',
+    'PHex','EPHex','VEHex','TEHex','FOHex','MPHex','CP','CEP','CLP','CTE','CTL','CVE','CVL','CELP','CV','CT','MissCount','Overloads','Multipress','CHitRaw',
     'CurTile','TotalTile',
     'Artist','Title','Author','EditorPitch','Pitch','ArtistRaw','TitleRaw','AuthorRaw',
     'Progress', 'ActualProgress',
@@ -38,8 +38,8 @@ class Lib {
     return `<color=#${Hex}>`
   }
 
-  static GradientText(Tag, Min, Max, Hex1, Hex2, Text) {
-    return `<color=#${ColorRange(Tag, Min, Max, Hex1, Hex2)}>${Text}</color>`
+  static GradientText(Tag, MinRange, MaxRange, Hex1, Hex2, Text) {
+    return `<color=#${ColorRange(Tag, MinRange, MaxRange, Hex1, Hex2)}>${Text}</color>`
   }
   static ValueBasedColorRange(Value, MinRange, MaxRange, Hex1 = 'ffffff', Hex2 = 'ffffff', Text) {
     const h1 = (Hex1 || 'ffffff').replace(/^#/, '').toLowerCase().replace(/^([0-9a-f])([0-9a-f])([0-9a-f])$/i, '$1$1$2$2$3$3');
@@ -143,8 +143,12 @@ class TileDatas {
 }
 
 class SystemDatas {
-  static DateDisplay(DateHex = 'ffffff', TimeHex = 'ffffff', DateSeperatorChar = '.', SpacingsNumber = 2) {
-    return `<color=#${DateHex}>${Year()}${DateSeperatorChar}${Lib.Pad(Month(),2)}${DateSeperatorChar}${Lib.Pad(Day(),2)}</color>${' '.repeat(SpacingsNumber)}<color=#${TimeHex}>${Lib.Pad(Hour(),2)}:${Lib.Pad(Minute(),2)}:${Lib.Pad(Second(),2)}</color>`;
+  static DateDisplay(DateHex = 'ffffff', TimeHex = 'ffffff', DateSeperatorChar = '.', SpacingsNumber = 2, System = 12, MinorElementsSizePercentage = 75) {
+    const AmPmIndicator = Hour() >= 12 ? 'P.M.' : 'A.M.';
+    const TwelveHourClockSystemHour = Hour() % 12 === 0 ? 12 : Hour() % 12;
+    return Number(System) === 12 ? `<color=#${DateHex}>${Year()}${DateSeperatorChar}${Lib.Pad(Month(), 2)}${DateSeperatorChar}${Lib.Pad(Day(), 2)}</color>${' '.repeat(SpacingsNumber)}<color=#${TimeHex}>${TwelveHourClockSystemHour}:${Lib.Pad(Minute(),2)}<size=${MinorElementsSizePercentage}%>:${Lib.Pad(Second(), 2)} ${AmPmIndicator}</size></color>`
+    : Number(System) === 24 ? `<color=#${DateHex}>${Year()}${DateSeperatorChar}${Lib.Pad(Month(), 2)}${DateSeperatorChar}${Lib.Pad(Day(), 2)}</color>${' '.repeat(SpacingsNumber)}<color=#${TimeHex}>${Lib.Pad(Hour(), 2)}:${Lib.Pad(Minute(), 2)}:${Lib.Pad(Second(),2)}</color>`
+    : `Error: Parameter "System" can only be values 12 or 24.`;
   }
 
   static CPUDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', WarningHex = 'ff0000', WarningThresholdPercentage = 80, Decimals = 2) {
@@ -262,7 +266,7 @@ class PlayerPerformanceDisplays {
   }
   static AdaptiveComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff') {
     const IsAutoOn = (IsAutoEnabled() === true);
-    if (IsAutoOn) return `<size=${MovingMan('Combo', 100, 150, 100, 800, 'true')}%><color=#${Lib.RGB(100)}>${Combo()}</color>\n<size=35%>Autoplay</size>`;
+    if (IsAutoOn) return `<size=${MovingMan('Combo', 100, 150, 100, 800, 'true')}%><color=#${Extras.RGB(100)}>${Combo()}</color>\n<size=35%>Autoplay</size>`;
     if (Difficulty() === 'Strict' && !IsAutoOn) return this.PureComboDisplay(Hex1, Hex2, 3000, 35, 'ffffff', 'Perfect Combo', 3);
     if (Difficulty() === 'Lenient' && !IsAutoOn) return this.ActualComboDisplay(Hex1, Hex2, 10000, 35, 'ffffff', 'Combo', 10);
     if (Difficulty() === 'Normal' && !IsAutoOn) return this.PerfectsComboDisplay(Hex1, Hex2, 5000, 35, 'ffffff', 'Perfects Combo', 5);
@@ -271,6 +275,7 @@ class PlayerPerformanceDisplays {
   static AdaptiveStatusLabel(Hex1, Hex2, ProgressDecimals = 2, MarginDecimals = 2) {
     const Difficulties = { 'Strict': '#b11a1a', 'Lenient': '#3acf4e', 'Normal': '#ffffff' };
     const ColoredDifficulty = `<color=${Difficulties[DifficultyRaw()] || Difficulties['Normal']}>${DifficultyRaw()}</color>`;
+    const AutoplayLabel = (IsAutoEnabled() === true) ? ` (<color=#${Extras.RGB(100)}>Autoplayed</color>)` : '';
 
     if (CurTile() !== TotalTile()) {
       return `Hit Margin Scale | <size=${MovingMan('MarginScale', 100, 110, 100, 800, 'true')}%>${Lib.GradientText('MarginScale', 25, 100, Hex1, Hex2, MarginScale(MarginDecimals) * 100)}</color>%</size>`;
@@ -281,7 +286,7 @@ class PlayerPerformanceDisplays {
     if (TotalTile() === 0 && StartTile() >= 1) return '';
 
     if (StartTile() === 1 && Progress(0) === 100) {
-      if (XAccuracy() === 100) return `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>`;
+      if (XAccuracy() === 100) return `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>${AutoplayLabel}`;
       if (MissCount() > 0 || Overloads() > 0) return `${ColoredDifficulty} Difficulty <color=#${FOHex()}>${MissCount() + Overloads()} Death <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
       if (CTE() === 0 && CVE() === 0 && CVL() === 0 && CTL() === 0) return `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
       if (CTE() === 0) return `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
@@ -290,7 +295,7 @@ class PlayerPerformanceDisplays {
 
     const ProgressDisplay = `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ ${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(ProgressDecimals))}<color=#ffffff>% `;
 
-    if (XAccuracy() === 100) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>`;
+    if (XAccuracy() === 100) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>${AutoplayLabel}`;
 
     if (Progress(0) === 100) {
       if (MissCount() === 0 && Overloads() === 0) {
@@ -331,7 +336,9 @@ class Extras {
   static ValueBasedColorRange(Value, MinRange, MaxRange, Hex1 = 'ffffff', Hex2 = 'ffffff', Text) {
     return Lib.ValueBasedColorRange(Value, MinRange, MaxRange, Hex1, Hex2, Text);
   }
+}
 
+class OtherGamesStyleDisplays {
   // Originally from maimai.js
   static maimaiStyleScoreDisplay(style) {
     let maxAchv = ((TotalTile() - 1)) * 500;
@@ -467,12 +474,44 @@ ${rankJudge(finalScore)}\n\n<color=#ffffff><size=80%>Great<size=70%> -${Lib.Pad(
 <size=75%>${parseFloat(reverseDXScorePercent.toFixed(2))}% <size=60%>-${parseFloat(minusDXScorePercent.toFixed(2))}%
 <size=50%>${DXStarJudge(reverseDXScorePercent)}`;
     }
-}
-
+  }
+  // Originally from maimai.js
   static maimaiStyleFCAPIndicator() {
     if (MissCount() !== 0) return;
     if (CV() === 0) return CELP() === 0 ? `<color=#ff7800>All Perfect+` : `<color=#ffba57>All Perfect`;
     return `<color=#67d300>Full Combo`;
+  }
+
+  static RDStyleResultsDisplay() {
+    const Labels = [IsAutoEnabled() === true ? 'Autoplayed' : `Wow! That's awesome!!`,
+'You are really good!',
+'We make a good team!',
+'Not bad I guess...',
+'Ugh, you can do better',
+'Better call 911, now!']
+
+    const Ratings = ['S+', 'A', 'B', 'C', 'D', 'F'];
+    const Suffixs = ['+', '-']
+    let Rating;
+    let Suffix;
+
+    const Mistakes = CELP() + CV() + CT() + MissCount() + Overloads();
+    
+    if (Mistakes === 0) Rating = Ratings[0];
+    if (Mistakes > 0 && Mistakes <= 5) Rating = Ratings[1];
+    if (Mistakes > 5 && Mistakes <= 10) Rating = Ratings[2];
+    if (Mistakes > 10 && Mistakes <= 15) Rating = Ratings[3];
+    if (Mistakes > 15 && Mistakes <= 20) Rating = Ratings[4];
+    if (Mistakes > 20) Rating = Ratings[5];
+
+    Suffix = Rating !== Ratings[0] ? CP() / 2 >= TotalTile() - 1 - StartTile() ? Suffixs[0] : Suffixs[1] : '';
+
+    return Progress() === 100 ? `<size=75%>Your rank
+<size=300%>${Rating}${Suffix}
+<size=60%><color=#ffff00>Mistakes: ${Mistakes}
+${CEP() + CVE() + CTE() + Overloads()} early + ${CLP() + CVL() + CTL() + MissCount()} late = ${Mistakes} offset frames</color>
+
+<size=75%>${Labels[Ratings.indexOf(Rating)]}</size>` : '';
   }
 }
 
@@ -531,8 +570,8 @@ registerTag('KPS', function (Hex1, Hex2, Decimals, Max) {
 }, true, '[Tag] Calculated KPS based on Actual BPM.\nParameters: (Hex1, Hex2, Decimals, Max)')
 
 
-registerTag('DateDisplay', function (DateHex, TimeHex, ConnectorChar, SpacingsNumber) {
-  return SystemDatas.DateDisplay(DateHex, TimeHex, ConnectorChar, SpacingsNumber);
+registerTag('DateDisplay', function (DateHex, TimeHex, ConnectorChar, SpacingsNumber, System, MinorElementsSizePercentage) {
+  return SystemDatas.DateDisplay(DateHex, TimeHex, ConnectorChar, SpacingsNumber, System, MinorElementsSizePercentage);
 }, true, '[UI Component] Displays current date and time.\nParameters: (DateHex, TimeHex, ConnectorChar, SpacingsNumber)\nDisplayed As: 2026.01.01  00:00:00')
 
 registerTag('CPUDisplay', function (Hex1, Hex2, WarningHex, WarningThresholdPercentage, Decimals) {
@@ -603,8 +642,12 @@ registerTag('ValueBasedColorRange', function (Value, MinRange, MaxRange, Hex1, H
 }, true, '[Utility] Generates colored text based on the value within the specified range.\nParameters: (Value, MinRange, MaxRange, Hex1, Hex2, Text)')
 
 registerTag('maimaiStyleScoreDisplay', function (Style) {
-  return Extras.maimaiStyleScoreDisplay(Style);
+  return OtherGamesStyleDisplays.maimaiStyleScoreDisplay(Style);
 }, true, '[UI Component] Displays a maimai-style score display based on selected style.\nParameters: (Style), Available Styles: Achv1, Achv2, BorderS, BorderSP, BorderSS, BorderSSP, DXS1, DXS2\nOriginally from maimai.js by MLob_302.')
 registerTag('maimaiStyleFCAPIndicator', function () {
-  return Extras.maimaiStyleFCAPIndicator();
+  return OtherGamesStyleDisplays.maimaiStyleFCAPIndicator();
 }, true, '[Tag] Displays a maimai-style Full Combo / All Perfect indicator.\nOriginally from maimai.js by MLob_302.')
+
+registerTag('RDStyleResultsDisplay', function () {
+  return OtherGamesStyleDisplays.RDStyleResultsDisplay()
+}, true, '[UI Component] Displayed a Rhythm Doctor style detailed results screen when finishing a level.\nIt is recommended to use a pixel art style font and a larger text size with this tag.')
