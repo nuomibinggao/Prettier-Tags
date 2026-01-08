@@ -1,7 +1,7 @@
 # Prettier Tags
 
 ## Description
-Prettier Tags is an open-source script for the Overlayer and Overlayer.Scripting mod made for the game A Dance of Fire and Ice,
+Prettier Tags is an open-source script for the [Overlayer](https://github.com/modlist-org/Overlayer) and [Overlayer.Scripting](https://github.com/modlist-org/Overlayer.Scripting) mod made for the game A Dance of Fire and Ice,
 it is based on iTags, Better iTags Alpha, Not Enough Tags, and maimai.js.
 
 ## Compatibility
