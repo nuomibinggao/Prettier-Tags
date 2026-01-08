@@ -1,19 +1,13 @@
-/*
-Prettier Tags is an open-source script for the Overlayer and Overlayer.Scripting mod made for the game A Dance of Fire and Ice,
-it is based on iTags, Better iTags Alpha, Not Enough Tags, and maimai.js (Original authors: SamXU1322, nuomibinggao, MLob_302).
-This "Zero" version is a complete rewrite of the tags found from the original scripts for readability and maintainability,
-it removes all the clutter and junk code from the original scripts, organizes the codebase, and simplifies/unifies the implementation. 
-
-This script is tested on Overlayer 3.41.0 and Overlayer.Scripting 1.11.0, older versions' compatibility is not guaranteed.
-
-ALPHA WARNING | This script is still in early development, features may be incomplete or broken, use at your own risk.
+/* 
+https://github.com/nuomibinggao/Prettier-Tags
+Version Zero 1.1
 */
 
 import './Impl'
 use(
     'Accuracy','XAccuracy',
     'CurMinute','CurSecond','TotalMinute','TotalSecond',
-    'PHex','EPHex','VEHex','TEHex','FOHex','MPHex','CP','CEP','CLP','CTE','CTL','CVE','CVL','MissCount','Overloads','Multipress','CHitRaw',
+    'PHex','EPHex','VEHex','TEHex','FOHex','MPHex','CP','CEP','CLP','CTE','CTL','CVE','CVL','CELP','CV','MissCount','Overloads','Multipress','CHitRaw',
     'CurTile','TotalTile',
     'Artist','Title','Author','EditorPitch','Pitch','ArtistRaw','TitleRaw','AuthorRaw',
     'Progress', 'ActualProgress',
@@ -62,28 +56,6 @@ class Lib {
 
     return `<color=#${hex}>${Text}</color>`;
   } // This function is used when Tags are not avaliable for ColorRange, only use when neccessary.
-
-  static RGB(OpacityPercentage = 100) {
-    const ClampedPercentage = Math.max(0, Math.min(100, OpacityPercentage));
-    const AlphaValue = Math.round((ClampedPercentage / 100) * 255);
-    const AlphaString = AlphaValue.toString(16).padStart(2, '0');
-
-    const Ms = MilliSecond();
-    const Ranges = [
-      { Start: 0, End: 166, From: `ff0000${AlphaString}`, To: `ffff00${AlphaString}` },
-      { Start: 166, End: 333, From: `ffff00${AlphaString}`, To: `00ff00${AlphaString}` },
-      { Start: 333, End: 500, From: `00ff00${AlphaString}`, To: `00ffff${AlphaString}` },
-      { Start: 500, End: 666, From: `00ffff${AlphaString}`, To: `0000ff${AlphaString}` },
-      { Start: 666, End: 833, From: `0000ff${AlphaString}`, To: `ff00ff${AlphaString}` },
-      { Start: 833, End: 1000, From: `ff00ff${AlphaString}`, To: `ff0000${AlphaString}` }
-    ];
-
-    for (const Range of Ranges) {
-      if (Ms < Range.End) {
-          return ColorRange('MilliSecond', Range.Start, Range.End, Range.From, Range.To);
-      }
-    }
-  }
 
   static ParseTitleTags(Tag) {
     return Tag ? Tag
@@ -251,10 +223,10 @@ class LevelInfoDisplays {
 }
 
 class PlayerPerformanceDisplays {
-  static AverageInputOffset(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2, ThresholdMS = 20) {
+  static AverageInputOffset(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2, ThresholdMs = 20) {
     const Display = TimingAvg(Decimals);
     const Value = Math.abs(Display);
-    const base = Math.abs(ThresholdMS);
+    const base = Math.abs(ThresholdMs);
     const Threshold = CurTile() <= 4 ? base * 4 : (Progress() > 75 ? base * 0.5 : base);
     return `${Lib.ValueBasedColorRange(Value, 0, Threshold, Hex1, Hex2, Display)}</color>ms`;
   }
@@ -334,8 +306,173 @@ class PlayerPerformanceDisplays {
 }
 
 class Extras {
+  // Original idea & logic from iTags, Opacity parameter & optimized function from Better iTags Alpha
   static RGB(OpacityPercentage = 100) {
-    return Lib.RGB(OpacityPercentage);
+    const ClampedPercentage = Math.max(0, Math.min(100, OpacityPercentage));
+    const AlphaValue = Math.round((ClampedPercentage / 100) * 255);
+    const AlphaString = AlphaValue.toString(16).padStart(2, '0');
+
+    const Ms = MilliSecond();
+    const Ranges = [
+      { Start: 0, End: 166, From: `ff0000${AlphaString}`, To: `ffff00${AlphaString}` },
+      { Start: 166, End: 333, From: `ffff00${AlphaString}`, To: `00ff00${AlphaString}` },
+      { Start: 333, End: 500, From: `00ff00${AlphaString}`, To: `00ffff${AlphaString}` },
+      { Start: 500, End: 666, From: `00ffff${AlphaString}`, To: `0000ff${AlphaString}` },
+      { Start: 666, End: 833, From: `0000ff${AlphaString}`, To: `ff00ff${AlphaString}` },
+      { Start: 833, End: 1000, From: `ff00ff${AlphaString}`, To: `ff0000${AlphaString}` }
+    ];
+
+    for (const Range of Ranges) {
+      if (Ms < Range.End) {
+          return ColorRange('MilliSecond', Range.Start, Range.End, Range.From, Range.To);
+      }
+    }
+  }
+  static ValueBasedColorRange(Value, MinRange, MaxRange, Hex1 = 'ffffff', Hex2 = 'ffffff', Text) {
+    return Lib.ValueBasedColorRange(Value, MinRange, MaxRange, Hex1, Hex2, Text);
+  }
+
+  // Originally from maimai.js
+  static maimaiStyleScoreDisplay(style) {
+    let maxAchv = ((TotalTile() - 1)) * 500;
+    let missMaxAchv = ((TotalTile() - 1) - MissCount()) * 500;
+    let missAchv = MissCount() * 500;
+    let perfectAchv = CP() * 500;
+    let greatAchv = CELP() * 400;
+    let goodAchv = CV() * 250;
+    let notPerfectAchv = (CELP() * 100) + goodAchv;
+    let reGreatAchv = CELP() * 100;
+
+    let DXScore = (CP() * 3) + (CELP() * 2) + CV();
+    let maxDXScore = (TotalTile() - 1) * 3;
+    let DXScorePercent = DXScore / maxDXScore * 100;
+    let reverseDXScore = maxDXScore - CELP() - (CV() * 2) - (MissCount() * 3);
+    let reverseDXScorePercent = reverseDXScore / maxDXScore * 100;
+    let minusDXScore = CELP() + (CV() * 2) + (MissCount() * 3);
+    let minusDXScorePercent = minusDXScore / maxDXScore * 100;
+
+    let finalScore;
+
+    function statusDetector() {
+      if (IsAutoEnabled == true){
+        return "auto";
+      } else if (IsNoFailEnabled == true){
+        return "nofail";
+      } else return "normal";
+    }
+
+    function rankJudge(score) {
+      if (score < 50) return `<color=#919191>D`;
+      else if (score < 60) return `C`;
+      else if (score < 70) return `<color=#27b7f6>B`;
+      else if (score < 75) return `<color=#27b7f6>BB`;
+      else if (score < 80) return `<color=#27b7f6>BBB`;
+      else if (score < 90) return `<color=#f85d5d>A`;
+      else if (score < 94) return `<color=#f85d5d>AA`;
+      else if (score < 97) return `<color=#f85d5d>AAA`;
+      else if (score < 98) return `<color=#f1e00c>S`;
+      else if (score < 99) return `<color=#f1e00c>S<color=#ffffff>+`;
+      else if (score < 99.5) return `<color=#f1e00c>SS`;
+      else if (score < 100) return `<color=#f1e00c>SS<color=#ffffff>+`;
+      else return `<color=#f1e00c>S<color=#27b7f6>S<color=#f85d5d>S`;
+    }
+    function DXStarJudge(score) {
+      if (score < 85) return `-`;
+      else if (score < 90) return `<color=#67d300>◆`;
+      else if (score < 93) return `<color=#67d300>◆◆`;
+      else if (score < 95) return `<color=#ff7800>◆◆◆`;
+      else if (score < 97) return `<color=#ff7800>◆◆◆◆`;
+      else return `<color=#ffcc0b>◆◆◆◆◆`;
+    }
+
+    // Current Achievement Type with Rating
+    if (style === "Achv1") {
+        finalScore = (perfectAchv + greatAchv + goodAchv) / maxAchv * 100;
+        return `<size=75%>Achievement <size=65%><color=#919191>(Current Type)</color>\n<size=150%>${Lib.Pad(parseFloat(finalScore.toFixed(4)), 4)}<size=75%>%<size=100%>\n${rankJudge(finalScore)}`;
+    }
+
+    // Minus Achievement Type with Rating
+    if (style === "Achv2") {
+        finalScore = (missMaxAchv - notPerfectAchv) / maxAchv * 100;
+        let GrAchv = reGreatAchv / maxAchv * 100;
+        let GoAchv = goodAchv / maxAchv * 100;
+        let MAchv = missAchv / maxAchv * 100;
+        let TNAchv = GrAchv + GoAchv + MAchv;
+        let TAchv = GrAchv + GoAchv;
+        switch (statusDetector())
+        {
+            case "auto":
+        }
+        return IsNoFailEnabled() == true ? `<size=75%>Achievement <size=65%><color=#919191>(Minus Type)</color>
+<size=150%>${Lib.Pad(parseFloat(finalScore.toFixed(4)), 4)}<size=75%>%<size=100%>
+${rankJudge(finalScore)}
+
+<color=#ffffff><size=80%>Great<size=70%> -${Lib.Pad(parseFloat(GrAchv.toFixed(4)), 4)}%
+<size=80%>Good<size=70%> -${Lib.Pad(parseFloat(GoAchv.toFixed(4)), 4)}%\n<size=80%>Miss<size=70%> -${Lib.Pad(parseFloat(MAchv.toFixed(4)), 4)}%
+<size=80%>Total<size=70%> -${Lib.Pad(parseFloat(TNAchv.toFixed(4)), 4)}%`
+
+        : `<size=75%>Achievement <size=65%><color=#919191>(Minus Type)</color>
+<size=150%>${Lib.Pad(parseFloat(finalScore.toFixed(4)), 4)}<size=75%>%<size=100%>
+${rankJudge(finalScore)}\n\n<color=#ffffff><size=80%>Great<size=70%> -${Lib.Pad(parseFloat(GrAchv.toFixed(4)), 4)}%
+<size=80%>Good<size=70%> -${Lib.Pad(parseFloat(GoAchv.toFixed(4)), 4)}%\n<size=80%>Total<size=70%> -${Lib.Pad(parseFloat(TAchv.toFixed(4)), 4)}%`; 
+    }
+
+    // Rank S Border Type
+    if (style === "BorderS") {
+        finalScore = ((missMaxAchv - notPerfectAchv) / maxAchv * 100) - 97;
+        return finalScore <= 0 ? `<size=75%>Rank <color=#f1e00c>S </color>Border
+<size=150%>-<size=75%>%`
+        : `<size=75%>Rank <color=#f1e00c>S </color>Border
+<size=150%>${Lib.Pad(parseFloat(finalScore.toFixed(4)), 4)}<size=75%>%`;
+    }
+
+    // Rank S+ Border Type
+    if (style === "BorderSP") {
+        finalScore = ((missMaxAchv - notPerfectAchv) / maxAchv * 100) - 98;
+        return finalScore <= 0 ? `<size=75%>Rank <color=#f1e00c>S</color>+ Border
+<size=150%>-<size=75%>%`
+        : `<size=75%>Rank <color=#f1e00c>S</color>+ Border
+<size=150%>${Lib.Pad(parseFloat(finalScore.toFixed(4)), 4)}<size=75%>%`;
+    }
+
+    // Rank SS Border Type
+    if (style === "BorderSS") {
+        finalScore = ((missMaxAchv - notPerfectAchv) / maxAchv * 100) - 99;
+        return finalScore <= 0 ? `<size=75%>Rank <color=#f1e00c>SS </color>Border
+<size=150%>-<size=75%>%`
+        : `<size=75%>Rank <color=#f1e00c>SS </color>Border
+<size=150%>${Lib.Pad(parseFloat(finalScore.toFixed(4)), 4)}<size=75%>%`;
+    }
+
+    // Rank SS+ Border Type
+    if (style === "BorderSSP") {
+        finalScore = ((missMaxAchv - notPerfectAchv) / maxAchv * 100) - 99.5;
+        return finalScore <= 0 ? `<size=75%>Rank <color=#f1e00c>SS</color>+ Border
+<size=150%>-<size=75%>%`
+        : `<size=75%>Rank <color=#f1e00c>SS</color>+ Border
+<size=150%>${Lib.Pad(parseFloat(finalScore.toFixed(4)), 4)}<size=75%>%`;
+    }
+
+    // Current DX Score Type with DX Score Rating
+    if (style === "DXS1") {
+        return `<size=75%>DX Score <size=65%><color=#919191>(Current Type)</color>
+<size=  >${DXScore} <size=100%>/ ${maxDXScore}\n<size=60%>${parseFloat(DXScorePercent.toFixed(2))}%
+<size=50%>${DXStarJudge(DXScorePercent)}`;
+    }
+
+    // Left / Lost DX Score Type with DX Score Rating
+  if (style === "DXS2") {
+    return `<size=75%>DX Score <size=65%><color=#919191>(Left / Lost Type)</color>
+<size=150%>${reverseDXScore} <size=100%>-${minusDXScore}
+<size=75%>${parseFloat(reverseDXScorePercent.toFixed(2))}% <size=60%>-${parseFloat(minusDXScorePercent.toFixed(2))}%
+<size=50%>${DXStarJudge(reverseDXScorePercent)}`;
+    }
+}
+
+  static maimaiStyleFCAPIndicator() {
+    if (MissCount() !== 0) return;
+    if (CV() === 0) return CELP() === 0 ? `<color=#ff7800>All Perfect+` : `<color=#ffba57>All Perfect`;
+    return `<color=#67d300>Full Combo`;
   }
 }
 
@@ -344,120 +481,130 @@ class Extras {
 // Tag registrations in Overlayer.Scripting mod
 registerTag('TileProgressPercentage', function (Hex1, Hex2, Decimals) {
   return Percentages.TilePercentage(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[Tag] Progress based on tiles cleared.\nParameters: (Hex1, Hex2, Decimals)')
 registerTag('SongProgressPercentage', function (Hex1, Hex2, Decimals) {
   return Percentages.SongPercentage(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[Tag] Progress based on song duration.\nParameters: (Hex1, Hex2, Decimals)')
 registerTag('StartProgressPercentage', function (Hex1, Hex2, Decimals) {
   return Percentages.StartPercentage(Hex1, Hex2, Decimals);
-}, true, '')
-registerTag('BestTileProgressPercentage', function (Hex1, Hex2, Decimals) {
+}, true, '[Tag] Tile-based progress when the level started.\nParameters: (Hex1, Hex2, Decimals)')
+registerTag('BestProgressPercentage', function (Hex1, Hex2, Decimals) {
   return Percentages.BestTilePercentage(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[Tag] Tile-based best progress achieved in previous attempts.\nParameters: (Hex1, Hex2, Decimals)')
 
 registerTag('MultiProgressPercentageDisplay', function (Hex1, Hex2, Decimals) {
   return Percentages.Display(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[UI Component] Displays Start, Current, and Best tile-based progress percentages.\nParameters: (Hex1, Hex2, Decimals)\nDisplayed As: 12.34% ~ 56.78% (Best 90.12%)')
 
 
 registerTag('Acc', function (Hex1, Hex2, Decimals) {
   return Accuracies.Acc(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[Tag] Accuracy (old) percentage.\nParameters: (Hex1, Hex2, Decimals)')
 registerTag('XAcc', function (Hex1, Hex2, Decimals) {
   return Accuracies.XAcc(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[Tag] X-Accuracy (Max 100%) percentage.\nParameters: (Hex1, Hex2, Decimals)')
 
 registerTag('MaxPossibleAcc', function (Hex1, Hex2, Decimals) {
   return Accuracies.MaxPossibleAcc(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[Tag] Maximum possible Accuracy (old) percentage.\nParameters: (Hex1, Hex2, Decimals)')
 registerTag('MaxPossibleXAcc', function (Hex1, Hex2, Decimals) {
   return Accuracies.MaxPossibleXAcc(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[Tag] Maximum possible X-Accuracy (Max 100%) percentage.\nParameters: (Hex1, Hex2, Decimals)')
 
 registerTag('MultiAccDisplay', function (Hex1, Hex2, Decimals) {
   return Accuracies.AccDisplay(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[UI Component] Displays current X-Accuracy and Accuracy.\nParameters: (Hex1, Hex2, Decimals)\nDisplayed As: X-100% (100.01%)')
 registerTag('MultiMaxAccDisplay', function (Hex1, Hex2, Decimals) {
   return Accuracies.MaxPossibleAccDisplay(Hex1, Hex2, Decimals);
-}, true, '')
+}, true, '[UI Component] Displays maximum possible X-Accuracy and max possible Accuracy.\nParameters: (Hex1, Hex2, Decimals)\nDisplayed As: X-100% (101.5%)')
 
 
 registerTag('TileBPM', function (Hex1, Hex2, Decimals, Max) {
   return TileDatas.TBPM(Hex1, Hex2, Decimals, Max);
-}, true, '')
+}, true, '[Tag] Set tile BPM.\nParameters: (Hex1, Hex2, Decimals, Max)')
 registerTag('ActualBPM', function (Hex1, Hex2, Decimals, Max) {
   return TileDatas.CBPM(Hex1, Hex2, Decimals, Max);
-}, true, '')
+}, true, '[Tag] Calculated actual BPM.\nParameters: (Hex1, Hex2, Decimals, Max)')
 
 registerTag('KPS', function (Hex1, Hex2, Decimals, Max) {
   return TileDatas.KPS(Hex1, Hex2, Decimals, Max);
-}, true, '')
+}, true, '[Tag] Calculated KPS based on Actual BPM.\nParameters: (Hex1, Hex2, Decimals, Max)')
 
 
 registerTag('DateDisplay', function (DateHex, TimeHex, ConnectorChar, SpacingsNumber) {
   return SystemDatas.DateDisplay(DateHex, TimeHex, ConnectorChar, SpacingsNumber);
-}, true, '')
+}, true, '[UI Component] Displays current date and time.\nParameters: (DateHex, TimeHex, ConnectorChar, SpacingsNumber)\nDisplayed As: 2026.01.01  00:00:00')
 
 registerTag('CPUDisplay', function (Hex1, Hex2, WarningHex, WarningThresholdPercentage, Decimals) {
   return SystemDatas.CPUDisplay(Hex1, Hex2, WarningHex, WarningThresholdPercentage, Decimals);
-}, true, '')
+}, true, '[Tag] Displays current CPU usage.\nParameters: (Hex1, Hex2, WarningHex, WarningThresholdPercentage, Decimals)')
 registerTag('MemoryDisplay', function (Hex1, Hex2, WarningHex, WarningThresholdPercentage, GBDecimals, PercentageDecimals) {
   return SystemDatas.MemoryDisplay(Hex1, Hex2, WarningHex, WarningThresholdPercentage, GBDecimals, PercentageDecimals);
-}, true, '')
+}, true, '[UI Component] Displays current Memory usage.\nParameters: (Hex1, Hex2, WarningHex, WarningThresholdPercentage, GBDecimals, PercentageDecimals)\nDisplayed As: 4GB / 8GB (50%)')
 
 registerTag('FPSDisplay', function (Hex1, Hex2, WarningHex, WarningThreshold, Decimals) {
   return SystemDatas.FPSDisplay(Hex1, Hex2, WarningHex, WarningThreshold, Decimals);
-}, true, '')
+}, true, '[UI Component] Displayes current FPS and the target FPS.\nParameters: (Hex1, Hex2, WarningHex, WarningThreshold, Decimals)\nDisplayed As: 59.97 / 60')
 registerTag('FrameTimeDisplay', function (Hex1, Hex2, WarningHex, WarningThresholdMs, Decimals) {
   return SystemDatas.FrameTimeDisplay(Hex1, Hex2, WarningHex, WarningThresholdMs, Decimals);
-}, true, '')
+}, true, '[UI Component] Displays current Frame Time.\nParameters: (Hex1, Hex2, WarningHex, WarningThresholdMs, Decimals)\nDisplayed As: 16.67ms')
 
 
 registerTag('DurationDisplay', function (Hex1, Hex2) {
   return LevelInfoDisplays.Duration(Hex1, Hex2);
-}, true, '')
+}, true, '[UI Component] Displays current and total duration of the level.\nParameters: (Hex1, Hex2)\nDisplayed As: 1:03 / 3:05')
 registerTag('TileProgressDisplay', function (Hex1, Hex2, Hex3) {
   return LevelInfoDisplays.Tile(Hex1, Hex2, Hex3);
-}, true, '')
+}, true, '[UI Component] Displays current tile, total tiles, and tiles left.\nParameters: (Hex1, Hex2, Hex3)\nDisplayed As: 123 / 456 (-333)')
 
 registerTag('TileProgressBar', function (HexPlayed, HexUnplayed, Length, Char) {
   return LevelInfoDisplays.TileProgressBar(HexPlayed, HexUnplayed, Length, Char);
-}, true, '')
+}, true, '[UI Component] Displays a progress bar based on tile progress.\nParameters: (HexPlayed, HexUnplayed, Length, Char)')
 registerTag('SongProgressBar', function (HexPlayed, HexUnplayed, Length, Char) {
   return LevelInfoDisplays.SongProgressBar(HexPlayed, HexUnplayed, Length, Char);
-}, true, '')
+}, true, '[UI Component] Displays a progress bar based on song progress.\nParameters: (HexPlayed, HexUnplayed, Length, Char)')
 
 registerTag('TitleDisplay', function (Hex, LineSpacing, SpeedSizePercentage, SecondLineSizePercentage, AuthorSizePercentage) {
   return LevelInfoDisplays.TitleDisplay(Hex, LineSpacing, SpeedSizePercentage, SecondLineSizePercentage, AuthorSizePercentage);
-}, true, '')
+}, true, '[UI Component] Fancy title display of current loaded level.\nParameters: (Hex, LineSpacing, SpeedSizePercentage, SecondLineSizePercentage, AuthorSizePercentage)')
 
 
-registerTag('AvgInputOffset', function (Hex1, Hex2, Decimals, ThresholdMS) {
-  return PlayerPerformanceDisplays.AverageInputOffset(Hex1, Hex2, Decimals, ThresholdMS);
-}, true, '')
+registerTag('AvgInputOffset', function (Hex1, Hex2, Decimals, ThresholdMs) {
+  return PlayerPerformanceDisplays.AverageInputOffset(Hex1, Hex2, Decimals, ThresholdMs);
+}, true, '[Tag] Average input offset display.\nParameters: (Hex1, Hex2, Decimals, ThresholdMs)')
 registerTag('CurInputOffset', function (Decimals) {
   return PlayerPerformanceDisplays.CurInputOffset(Decimals);
-}, true, '')
+}, true, '[Tag] Current tile input offset display with judgment color.\nParameters: (Decimals)')
 
 registerTag('PureComboDisplay', function (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold) {
   return PlayerPerformanceDisplays.PureComboDisplay(Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold);
-}, true, '')
+}, true, '[UI Component] Displayes Pure Perfect combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold)')
 registerTag('PerfectsComboDisplay', function (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold) {
   return PlayerPerformanceDisplays.PerfectsComboDisplay(Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold);
-}, true, '')
+}, true, '[UI Component] Displayes Perfects (EPerfect, Perfect, LPerfect) combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold)')
 registerTag('ActualComboDisplay', function (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold) {
   return PlayerPerformanceDisplays.ActualComboDisplay(Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold);
-}, true, '')
+}, true, '[UI Component] Displayes Actual (Counts up unless Early!!, Late!!, Overload..., Miss... hit) combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold)')
 
 registerTag('AdaptiveComboDisplay', function (Hex1, Hex2) {
   return PlayerPerformanceDisplays.AdaptiveComboDisplay(Hex1, Hex2);
-}, true, '')
+}, true, '[UI Component] Displayess combo based on difficulty and Autoplay status.\nParameters: (Hex1, Hex2)')
 
 registerTag('AdaptiveStatusLabel', function (Hex1, Hex2, ProgressDecimals) {
   return PlayerPerformanceDisplays.AdaptiveStatusLabel(Hex1, Hex2, ProgressDecimals);
-}, true, '')
+}, true, '[UI Component] Displays a status label based on current performance, difficulty, and Margin Scale.\nParameters: (Hex1, Hex2, ProgressDecimals)')
 
 
 registerTag('RGB', function (OpacityPercentage) {
   return Extras.RGB(OpacityPercentage);
-}, true, '')
+}, true, '[Utility] Generates a color hex that changes over time with specified opacity percentage to create an cycling RGB effect.\nParameters: (OpacityPercentage)\nOriginally from iTags by SamXU1322.')
+registerTag('ValueBasedColorRange', function (Value, MinRange, MaxRange, Hex1, Hex2, Text) {
+  return Extras.ValueBasedColorRange(Value, MinRange, MaxRange, Hex1, Hex2, Text);
+}, true, '[Utility] Generates colored text based on the value within the specified range.\nParameters: (Value, MinRange, MaxRange, Hex1, Hex2, Text)')
+
+registerTag('maimaiStyleScoreDisplay', function (Style) {
+  return Extras.maimaiStyleScoreDisplay(Style);
+}, true, '[UI Component] Displays a maimai-style score display based on selected style.\nParameters: (Style), Available Styles: Achv1, Achv2, BorderS, BorderSP, BorderSS, BorderSSP, DXS1, DXS2\nOriginally from maimai.js by MLob_302.')
+registerTag('maimaiStyleFCAPIndicator', function () {
+  return Extras.maimaiStyleFCAPIndicator();
+}, true, '[Tag] Displays a maimai-style Full Combo / All Perfect indicator.\nOriginally from maimai.js by MLob_302.')
