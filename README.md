@@ -10,7 +10,7 @@ These scripts are tested on ADOFAI 2.9.7, Overlayer 3.41.0, and Overlayer.Script
 This script is in the Alpha testing phase, features may be incomplete or broken depending on your environment, your older files may be deleted or corrupted, use at your own risk.
 
 ## Credits
-- [SamXU1322](https://space.bilibili.com/512479134) for iTags V4Dev Script.
+- [SamXU1322](https://space.bilibili.com/512479134) for iTags Scripts.
 - [MLob_302](https://space.bilibili.com/1125672122) for maimai.js Script.
 
 ## Legal & Licensing
