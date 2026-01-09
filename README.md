@@ -14,4 +14,4 @@ This script is in the Alpha testing phase, features may be incomplete or broken 
 - [MLob_302](https://space.bilibili.com/1125672122) for maimai.js Script.
 
 ## Legal & Licensing
-Prettier Tags is licensed under the [MIT License](https://opensource.org/license/mit), meaning this script is free to use as long as credits are provided.
+Prettier Tags is licensed under the [Creative Commons Attribution-NonCommercial Version 4.0 (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/), meaning this script is free to use as long as credits are provided.
