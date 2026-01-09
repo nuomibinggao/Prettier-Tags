@@ -246,7 +246,7 @@ class PlayerPerformanceDisplays {
   static PerfectsComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', MaxTrackedCombos = 5000, LabelSizePercentage = 35, LabelHex = 'ffffff', Label = 'Perfects Combo', ShowThreshold = 5) {
     const ActualMaxTrackedCombos = (MaxTrackedCombos > (TotalTile() - 1)) ? (TotalTile() - 1) : MaxTrackedCombos;
 
-    const PerfectsCombo = MarginCombos('Perfect|EarlyPerfect|LatePerfect|VeryEarly|VeryLate');
+    const PerfectsCombo = MarginCombos('Perfect|EarlyPerfect|LatePerfect');
     const MinRange = CurTile() - PerfectsCombo + ShowThreshold;
     const MaxRange = MinRange + ActualMaxTrackedCombos;
 
