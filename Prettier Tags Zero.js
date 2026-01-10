@@ -1,6 +1,6 @@
 /* 
 https://github.com/nuomibinggao/Prettier-Tags
-Version Zero Release 1
+Version Zero Release 2
 */
 
 import './Impl'
@@ -24,7 +24,7 @@ use(
 
 // Utility class for common functions
 class Lib {
-  static Round(n, Decimals = 2) {
+  static Round(n, Decimals) {
     const f = 10 ** Decimals
     return Math.round((n + Number.EPSILON) * f) / f
   }
@@ -64,6 +64,12 @@ class Lib {
       .replace(/<color=#([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?>/g, (match, hex6, alpha) => alpha === '00' ? match : `<color=#${hex6}>`) // if alpha === '00' (fully transparent) keep original tag so later cleanup can remove empty transparent lines; otherwise normalize to 6-digit hex
       : '';
   }
+
+  static RawSongPercentage(Decimals = 14) { // 14 decimal places is the default of Overlayer mod native tags
+    const CurTime = CurMinute() * 60 + CurSecond() + CurMilliSecond() / 1000
+    const TotalTime = TotalMinute() * 60 + TotalSecond() + TotalMilliSecond() / 1000
+    return TotalTime === 0 ? 0 : parseFloat((CurTime / TotalTime * 100).toFixed(Decimals))
+  } // A fixed version of {ActualProgress} as in the current version of the Overlayer mod, this tag returns the same value as {Progress}, use this instead of {ActualProgress}
 }
 
 
@@ -71,13 +77,13 @@ class Lib {
 // Tag definition classes
 class Percentages {
   static TilePercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
-    return `${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(Decimals))}%`;
+    return CurTile() < StartTile() ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(Decimals))}%`;
   }
   static SongPercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
-    return `${Lib.GradientText('ActualProgress', 0, 100, Hex1, Hex2, ActualProgress(Decimals))}%`;
+    return `${Lib.ValueBasedColorRange(Lib.RawSongPercentage(14), 0, 100, Hex1, Hex2, Lib.RawSongPercentage(Decimals))}%`;
   }
   static StartPercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
-    return (StartTile() === 1) ?  `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(Decimals))}%`;
+    return StartTile() === 1 ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(Decimals))}%`;
   }
   static BestTilePercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
     const FixedBestProgress = parseFloat(BestProgress().toFixed(Decimals));
@@ -85,7 +91,7 @@ class Percentages {
   }
 
   static Display(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
-    return `${this.TilePercentage(Hex1, Hex2, Decimals)} ~ ${this.SongPercentage(Hex1, Hex2, Decimals)} (Best ${this.BestTilePercentage(Hex1, Hex2, Decimals)})`;
+    return `${this.StartPercentage(Hex1, Hex2, Decimals)} ~ ${this.TilePercentage(Hex1, Hex2, Decimals)} (Best ${this.BestTilePercentage(Hex1, Hex2, Decimals)})`;
   }
 }
 
@@ -173,7 +179,7 @@ class SystemDatas {
 
 class LevelInfoDisplays {
   static Duration(Hex1 = 'ffffff', Hex2 = 'ffffff') {
-    return (ActualProgress() === 100) ? `<color=#${Hex1}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>` : `<color=#${Hex1}>${CurMinute()}:${Lib.Pad(CurSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>`;
+    return (Lib.RawSongPercentage() === 100) ? `<color=#${Hex1}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>` : `<color=#${Hex1}>${CurMinute()}:${Lib.Pad(CurSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>`;
   }
   static Tile(Hex1 = 'ffffff', Hex2 = 'ffffff', Hex3 = 'ffffff') {
     return `<color=#${Hex1}>${CurTile() - 1}</color> / <color=#${Hex2}>${TotalTile() - 1}</color> (-<color=#${Hex3}>${LeftTile()}</color>)`;
@@ -193,14 +199,14 @@ class LevelInfoDisplays {
     }
   }
   static SongProgressBar(HexPlayed = '999999', HexUnplayed = 'ffffff', Length = 3, Char = '|') {
-    if (ActualProgress() === 100 && CurMinute()=== 0 && CurSecond() === 0) {
+    if (Lib.RawSongPercentage() === 100 && CurMinute()=== 0 && CurSecond() === 0) {
       const BarPlayed = Char.repeat(100 * Length)
       const BarUnplayed = ''
       const Bar = `<color=#${HexPlayed}>${BarPlayed}<color=#${HexUnplayed}>${BarUnplayed}</color>`
       return Bar;
     } else {
-      const BarPlayed = Char.repeat(ActualProgress() * Length)
-      const BarUnplayed = Char.repeat(Length * 100 - ActualProgress() * Length)
+      const BarPlayed = Char.repeat(Lib.RawSongPercentage() * Length)
+      const BarUnplayed = Char.repeat(Length * 100 - Lib.RawSongPercentage() * Length)
       const Bar = `<color=#${HexPlayed}>${BarPlayed}<color=#${HexUnplayed}>${BarUnplayed}</color>`
       return Bar;
     }
@@ -222,7 +228,8 @@ class LevelInfoDisplays {
       .replace(/\n([\s\S]*?)(?=\n|$)/, `\n<size=${SecondLineSizePercentage}%>$1${SpeedDisplay}`) // add size to the first second-line and append speed on the same line
       .replace(/^[^\n]*$/, `$&${SpeedDisplay}`); // if no second line exists, append speed after the single-line title
 
-    return `<line-height=${LineSpacingPercentage}%>${ArtistProcessed}${ArtistProcessed ? ' - ' : ''}${TitleProcessed}\n${AuthorProcessed}</line-height>`;
+    const TopTitle = `${ArtistProcessed}${ArtistProcessed ? ' - ' : ''}${TitleProcessed}`
+    return TopTitle ? `<line-height=${LineSpacingPercentage}%>${TopTitle}\n${AuthorProcessed}</line-height>` : `${SpeedDisplay}`;
   }
 }
 
@@ -278,7 +285,7 @@ class PlayerPerformanceDisplays {
     const AutoplayLabel = (IsAutoEnabled() === true) ? ` (<color=#${Extras.RGB(100)}>Autoplayed</color>)` : '';
 
     if (CurTile() !== TotalTile()) {
-      return `Hit Margin Scale | <size=${MovingMan('MarginScale', 100, 110, 100, 800, 'true')}%>${Lib.GradientText('MarginScale', 25, 100, Hex1, Hex2, MarginScale(MarginDecimals) * 100)}</color>%</size>`;
+      return `Hit Margin Scale | <size=${MovingMan('MarginScale', 100, 150, 100, 800, 'true')}%>${Lib.GradientText('MarginScale', 25, 100, Hex1, Hex2, MarginScale(MarginDecimals) * 100)}</color>%</size>`;
     }
 
     if (StartProgress() === 100 && CurTile === -1) return '';
@@ -495,16 +502,18 @@ ${rankJudge(finalScore)}\n\n<color=#ffffff><size=80%>Great<size=70%> -${Lib.Pad(
     let Rating;
     let Suffix;
 
-    const Mistakes = CELP() + CV() + CT() + MissCount() + Overloads();
-    
-    if (Mistakes === 0) Rating = Ratings[0];
-    if (Mistakes > 0 && Mistakes <= 5) Rating = Ratings[1];
-    if (Mistakes > 5 && Mistakes <= 10) Rating = Ratings[2];
-    if (Mistakes > 10 && Mistakes <= 15) Rating = Ratings[3];
-    if (Mistakes > 15 && Mistakes <= 20) Rating = Ratings[4];
-    if (Mistakes > 20) Rating = Ratings[5];
+    const Mistakes = CELP() + CV() + CT()
 
-    Suffix = Rating !== Ratings[0] ? CP() / 2 >= TotalTile() - 1 - StartTile() ? Suffixs[0] : Suffixs[1] : '';
+    Rating = (MissCount() + Overloads() === 0 || Mistakes === 0) ? Ratings[0] :
+             Mistakes <= 5 ? Ratings[1] :
+             Mistakes <= 10 ? Ratings[2] :
+             Mistakes <= 15 ? Ratings[3] :
+             Mistakes <= 20 ? Ratings[4] :
+             Ratings[5];
+
+    if (MissCount() + Overloads() > 0) Rating = Ratings[5]
+
+    Suffix = Rating !== Ratings[0] && Rating !== Ratings[5] ? CP() / 2 >= TotalTile() - 1 - StartTile() ? Suffixs[0] : Suffixs[1] : '';
 
     return Progress() === 100 ? `<size=75%>Your rank
 <size=300%>${Rating}${Suffix}
@@ -636,7 +645,7 @@ registerTag('AdaptiveStatusLabel', function (Hex1, Hex2, ProgressDecimals) {
 
 registerTag('RGB', function (OpacityPercentage) {
   return Extras.RGB(OpacityPercentage);
-}, true, '[Utility] Generates a color hex that changes over time with specified opacity percentage to create an cycling RGB effect.\nParameters: (OpacityPercentage)\nOriginally from iTags by SamXU1322.')
+}, true, '[Utility] Generates a color hex that changes over time with specified opacity percentage to create an cycling RGB effect, similar to the {Rainbow} tag.\nParameters: (OpacityPercentage)\nOriginally from iTags by SamXU1322.')
 registerTag('ValueBasedColorRange', function (Value, MinRange, MaxRange, Hex1, Hex2, Text) {
   return Extras.ValueBasedColorRange(Value, MinRange, MaxRange, Hex1, Hex2, Text);
 }, true, '[Utility] Generates colored text based on the value within the specified range.\nParameters: (Value, MinRange, MaxRange, Hex1, Hex2, Text)')
@@ -650,4 +659,4 @@ registerTag('maimaiStyleFCAPIndicator', function () {
 
 registerTag('RDStyleResultsDisplay', function () {
   return OtherGamesStyleDisplays.RDStyleResultsDisplay()
-}, true, '[UI Component] Displayed a Rhythm Doctor style detailed results screen when finishing a level.\nIt is recommended to use a pixel art style font and a larger text size with this tag.')
+}, true, '[UI Component] Displayed a Rhythm Doctor style detailed results screen when finishing a level.\nIt is recommended to use a pixel art style font and a larger text size setting with this tag.')
