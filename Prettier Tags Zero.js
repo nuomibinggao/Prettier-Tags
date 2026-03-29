@@ -1,6 +1,7 @@
 /* 
 https://github.com/nuomibinggao/Prettier-Tags
-Version Zero Release 2
+Version Zero Release 3
+For Overlayer v3.44.0 and Overlayer.Scripting 1.11.1
 */
 
 import './Impl'
@@ -77,7 +78,8 @@ class Lib {
 // Tag definition classes
 class Percentages {
   static TilePercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
-    return CurTile() < StartTile() ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(Decimals))}%`;
+    const Value = CurTile() < StartTile() ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(Decimals))}%`;
+    return (StartProgress() === 100 && CurTile() === 0) ? `<color=#${Hex2}>100</color>%` : Value;
   }
   static SongPercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
     return `${Lib.ValueBasedColorRange(Lib.RawSongPercentage(14), 0, 100, Hex1, Hex2, Lib.RawSongPercentage(Decimals))}%`;
@@ -106,9 +108,9 @@ class Accuracies {
   }
 
   static MaxPossibleAcc(Hex1 = "ffffff", Hex2 = "ffffff", Decimals = 2) {
-      const AllJudges = CP() + CEP() + CLP() + CVE() + CVL() + CTE() + MissCount() + Overloads()
+      const AllJudges = CP() + CEP() + CLP() + CVE() + CVL() + Fixes.CalculatedTE() + MissCount() + Overloads()
       let MaxAcc = (((CP() + LeftTile() + CEP() + CLP()) / (AllJudges + LeftTile() + MissCount() + Overloads())) + (CP() + LeftTile()) * 0.0001) * 100;
-      const MaxXAcc = (((CP() + LeftTile()) + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4 + CTE() * 0.2) / (AllJudges + LeftTile()) * (0.9875 ** CheckPointUsed())) * 100
+      const MaxXAcc = (((CP() + LeftTile()) + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4 + Fixes.CalculatedTE() * 0.2) / (AllJudges + LeftTile()) * (0.9875 ** CheckPointUsed())) * 100
 
       MaxAcc = Number.isFinite(MaxAcc) ? Lib.Round(MaxAcc, Decimals) : 0
 
@@ -119,8 +121,8 @@ class Accuracies {
         return `${Lib.ValueBasedColorRange(MaxAcc, 0, 100, Hex2, Hex1, MaxAcc)}</color>%`
   }
   static MaxPossibleXAcc(Hex1 = "ffffff", Hex2 = "ffffff", Decimals = 2) {
-    const AllJudges = CP() + CEP() + CLP() + CVE() + CVL() + CTE() + MissCount() + Overloads()
-    const MaxXAcc = (((CP() + LeftTile()) + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4 + CTE() * 0.2) / (AllJudges + LeftTile()) * (0.9875 ** CheckPointUsed())) * 100
+    const AllJudges = CP() + CEP() + CLP() + CVE() + CVL() + Fixes.CalculatedTE() + MissCount() + Overloads()
+    const MaxXAcc = (((CP() + LeftTile()) + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4 + Fixes.CalculatedTE() * 0.2) / (AllJudges + LeftTile()) * (0.9875 ** CheckPointUsed())) * 100
 
     return !Number.isFinite(MaxXAcc) || MaxXAcc === 100 ? `<color=#ffda00>100</color>%` : `${Lib.ValueBasedColorRange(MaxXAcc, 0, 100, Hex2, Hex1, parseFloat(MaxXAcc.toFixed(Decimals)))}</color>%`;
   }
@@ -135,16 +137,16 @@ class Accuracies {
 
 class TileDatas {
   static TBPM(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 3, Max = 8000) {
-    return `${Lib.GradientText('TileBpm', 0, Max, Hex1, Hex2, TileBpm(Decimals))}`;
+    return `${Lib.GradientText('TileBpm', 0, Max, Hex1, Hex2, Lib.Round(TileBpm(), Decimals))}`;
   }
   static CBPM(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 3, Max = 16000) {
-    const ActualCBPM = !isFinite(CurBpm()) ? TileBpm(Decimals) : CurBpm(Decimals);
-    return `${Lib.ValueBasedColorRange(ActualCBPM, 0, Max, Hex1, Hex2, ActualCBPM)}`;
+    const ActualCBPM = !isFinite(CurBpm()) ? TileBpm() : CurBpm();
+    return `${Lib.ValueBasedColorRange(ActualCBPM, 0, Max, Hex1, Hex2, Lib.Round(ActualCBPM, Decimals))}`;
   }
 
   static KPS(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2, Max = 160) {
     const ActualKPS = !isFinite(RecKPS()) ? (TileBpm(Decimals) / 60) : RecKPS(Decimals);
-    return `${Lib.ValueBasedColorRange(ActualKPS, 0, Max, Hex1, Hex2, ActualKPS)}`;
+    return `${Lib.ValueBasedColorRange(ActualKPS, 0, Max, Hex1, Hex2, Lib.Round(ActualKPS, Decimals))}`;
   }
 }
 
@@ -179,7 +181,7 @@ class SystemDatas {
 
 class LevelInfoDisplays {
   static Duration(Hex1 = 'ffffff', Hex2 = 'ffffff') {
-    return (Lib.RawSongPercentage() === 100) ? `<color=#${Hex1}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>` : `<color=#${Hex1}>${CurMinute()}:${Lib.Pad(CurSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>`;
+    return (((CurTile() === TotalTile()) && CurTile() >= 1) || (CurTile() === 0 && Progress() === 100)) ? `<color=#${Hex1}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>` : `<color=#${Hex1}>${CurMinute()}:${Lib.Pad(CurSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>`;
   }
   static Tile(Hex1 = 'ffffff', Hex2 = 'ffffff', Hex3 = 'ffffff') {
     return `<color=#${Hex1}>${CurTile() - 1}</color> / <color=#${Hex2}>${TotalTile() - 1}</color> (-<color=#${Hex3}>${LeftTile()}</color>)`;
@@ -229,6 +231,17 @@ class LevelInfoDisplays {
       .replace(/^[^\n]*$/, `$&${SpeedDisplay}`); // if no second line exists, append speed after the single-line title
 
     const TopTitle = `${ArtistProcessed}${ArtistProcessed ? ' - ' : ''}${TitleProcessed}`
+      .replace(/^(?:\s*<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>)*/,  match => {
+        return match.replace(/<color=(?:"#|'#|#)([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?(?:"|')?>/gi, (tag, hex6, alpha) =>
+          alpha?.toLowerCase() === '00' ? '' : tag
+        );
+      })
+      .replace(/(\n)(?:\s*<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>)*/, match => {
+        return match.replace(/<color=(?:"#|'#|#)([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?(?:"|')?>/gi, (tag, hex6, alpha) =>
+          alpha?.toLowerCase() === '00' ? '' : tag
+        );
+      });
+
     return TopTitle ? `<line-height=${LineSpacingPercentage}%>${TopTitle}\n${AuthorProcessed}</line-height>` : `${SpeedDisplay}`;
   }
 }
@@ -295,8 +308,8 @@ class PlayerPerformanceDisplays {
     if (StartTile() === 1 && Progress(0) === 100) {
       if (XAccuracy() === 100) return `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>${AutoplayLabel}`;
       if (MissCount() > 0 || Overloads() > 0) return `${ColoredDifficulty} Difficulty <color=#${FOHex()}>${MissCount() + Overloads()} Death <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-      if (CTE() === 0 && CVE() === 0 && CVL() === 0 && CTL() === 0) return `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-      if (CTE() === 0) return `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
+      if (Fixes.CalculatedTE() === 0 && CVE() === 0 && CVL() === 0 && CTL() === 0) return `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
+      if (Fixes.CalculatedTE() === 0) return `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
       return `${ColoredDifficulty} Difficulty <color=#ffffff>Cleared! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
     }
 
@@ -306,14 +319,27 @@ class PlayerPerformanceDisplays {
 
     if (Progress(0) === 100) {
       if (MissCount() === 0 && Overloads() === 0) {
-        if (CTE() === 0 && CVE() === 0 && CVL() === 0 && CTL() === 0) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-        if (CTE() === 0) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
+        if (Fixes.CalculatedTE() === 0 && CVE() === 0 && CVL() === 0 && CTL() === 0) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
+        if (Fixes.CalculatedTE() === 0) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
         return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#ffffff>Cleared! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
       }
       return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#${FOHex()}>${MissCount() + Overloads()} Death <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
     }
 
     return 'Get Ready...';
+  }
+}
+
+class Fixes {
+  // Fixes of tags coming from the Overlayer mod itself
+  static CalculatedTE() {
+    const R = XAccuracy() / (100 * (0.9875 ** CheckPointUsed()));
+
+    const BaseJudges = CP() + CEP() + CLP() + CVE() + CVL() + MissCount() + Overloads();
+    const KnownSum = CP() + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4;
+
+    const CalculatedValue = Lib.Round((R * BaseJudges - KnownSum) / (0.2 - R), 0);
+    return isFinite(CalculatedValue) && CalculatedValue >= 0 ? CalculatedValue : 0;
   }
 }
 
@@ -518,7 +544,7 @@ ${rankJudge(finalScore)}\n\n<color=#ffffff><size=80%>Great<size=70%> -${Lib.Pad(
     return Progress() === 100 ? `<size=75%>Your rank
 <size=300%>${Rating}${Suffix}
 <size=60%><color=#ffff00>Mistakes: ${Mistakes}
-${CEP() + CVE() + CTE() + Overloads()} early + ${CLP() + CVL() + CTL() + MissCount()} late = ${Mistakes} offset frames</color>
+${CEP() + CVE() + Fixes.CalculatedTE() + Overloads()} early + ${CLP() + CVL() + CTL() + MissCount()} late = ${Mistakes} offset frames</color>
 
 <size=75%>${Labels[Ratings.indexOf(Rating)]}</size>` : '';
   }
@@ -641,6 +667,11 @@ registerTag('AdaptiveComboDisplay', function (Hex1, Hex2) {
 registerTag('AdaptiveStatusLabel', function (Hex1, Hex2, ProgressDecimals) {
   return PlayerPerformanceDisplays.AdaptiveStatusLabel(Hex1, Hex2, ProgressDecimals);
 }, true, '[UI Component] Displays a status label based on current performance, difficulty, and Margin Scale.\nParameters: (Hex1, Hex2, ProgressDecimals)')
+
+
+registerTag('CalculatedTE', function() {
+  return Fixes.CalculatedTE();
+}, true, '[Fixed Tag] A fixed version of the CTE() tag that calculates the value based on known information and weighted assumptions to provide a more accurate estimation.')
 
 
 registerTag('RGB', function (OpacityPercentage) {
