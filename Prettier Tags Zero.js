@@ -1,7 +1,7 @@
 /* 
 https://github.com/nuomibinggao/Prettier-Tags
-Version Zero Release 3
-For Overlayer v3.44.0 and Overlayer.Scripting 1.11.1
+Version Zero Release 4
+For Overlayer v3.49.0 (Beta)
 */
 
 import './Impl'
@@ -25,9 +25,9 @@ use(
 
 // Utility class for common functions
 class Lib {
-  static Round(n, Decimals) {
-    const f = 10 ** Decimals
-    return Math.round((n + Number.EPSILON) * f) / f
+  static Round(Num, Decimals) {
+    const Factor = 10 ** Decimals
+    return Math.round((Num + Number.EPSILON) * Factor) / Factor;
   }
   static Pad(Num, Len) {
     return Num.toString().padStart(Len, '0');
@@ -56,7 +56,7 @@ class Lib {
     const hex = ((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1).toLowerCase();
 
     return `<color=#${hex}>${Text}</color>`;
-  } // This function is used when Tags are not avaliable for ColorRange, only use when neccessary.
+  } // This function is used when Native Tags are not avaliable for ColorRange, only use when neccessary.
 
   static ParseTitleTags(Tag) {
     return Tag ? Tag
@@ -78,14 +78,14 @@ class Lib {
 // Tag definition classes
 class Percentages {
   static TilePercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
-    const Value = CurTile() < StartTile() ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(Decimals))}%`;
-    return (StartProgress() === 100 && CurTile() === 0) ? `<color=#${Hex2}>100</color>%` : Value;
+    const Value = (StartTile() === CurTile()) ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(Decimals))}%`;
+    return (StartTile() > CurTile()) ? `<color=#${Hex2}>100</color>%` : Value;
   }
   static SongPercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
     return `${Lib.ValueBasedColorRange(Lib.RawSongPercentage(14), 0, 100, Hex1, Hex2, Lib.RawSongPercentage(Decimals))}%`;
   }
   static StartPercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
-    return StartTile() === 1 ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(Decimals))}%`;
+    return (Math.abs(StartProgress() - (100 / TotalTile())) < 0.000001) || StartTile() === CurTile() ? `<color=#${Hex1}>0</color>%` : `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(Decimals))}%`;
   }
   static BestTilePercentage(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
     const FixedBestProgress = parseFloat(BestProgress().toFixed(Decimals));
@@ -181,38 +181,25 @@ class SystemDatas {
 
 class LevelInfoDisplays {
   static Duration(Hex1 = 'ffffff', Hex2 = 'ffffff') {
-    return (((CurTile() === TotalTile()) && CurTile() >= 1) || (CurTile() === 0 && Progress() === 100)) ? `<color=#${Hex1}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>` : `<color=#${Hex1}>${CurMinute()}:${Lib.Pad(CurSecond(), 2)}</color> / <color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>`;
+    const CurAllSeconds = CurMinute() * 60 + CurSecond();
+    const MaxAllSeconds = TotalMinute() * 60 + TotalSecond();
+
+    if (MaxAllSeconds === 0) {
+      const DisplayCurDuration = Lib.ValueBasedColorRange(CurTile(), 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, `${CurMinute()}:${Lib.Pad(CurSecond(), 2)}`);
+      const DisplayTotalDuration = `<color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>`;
+
+      return (StartProgress() === 100) ? `<color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)} <color=#ffffff>/ ${DisplayTotalDuration}` : `${DisplayCurDuration} <color=#ffffff>/ ${DisplayTotalDuration}`;
+    } else {
+      const DisplayCurDuration = Lib.ValueBasedColorRange(CurAllSeconds, 0, MaxAllSeconds, Hex1, Hex2, `${CurMinute()}:${Lib.Pad(CurSecond(), 2)}`);
+      const DisplayTotalDuration = `<color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)}</color>`;
+
+      return (CurAllSeconds === 0 && Progress() === 100) ? `<color=#${Hex2}>${TotalMinute()}:${Lib.Pad(TotalSecond(), 2)} <color=#ffffff>/ ${DisplayTotalDuration}` : `${DisplayCurDuration} <color=#ffffff>/ ${DisplayTotalDuration}`;
+    }
   }
-  static Tile(Hex1 = 'ffffff', Hex2 = 'ffffff', Hex3 = 'ffffff') {
-    return `<color=#${Hex1}>${CurTile() - 1}</color> / <color=#${Hex2}>${TotalTile() - 1}</color> (-<color=#${Hex3}>${LeftTile()}</color>)`;
+  static Tile(Hex1 = 'ffffff', Hex2 = 'ffffff') {
+    return `${Lib.ValueBasedColorRange(Fixes.FixedCurTile(), 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, Fixes.FixedCurTile())}</color> / <color=#${Hex2}>${Fixes.CalculatedTotalTile()}</color> (-${Lib.ValueBasedColorRange(Fixes.CalculatedTotalTile() - Fixes.FixedCurTile(), 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, Fixes.CalculatedTotalTile() - Fixes.FixedCurTile())}</color>)`;
   }
 
-  static TileProgressBar(HexPlayed = '999999', HexUnplayed = 'ffffff', Length = 3, Char = '|') {
-    if (Progress(0) === 100 && CurMinute()=== 0 && CurSecond() === 0) {
-      const BarPlayed = Char.repeat(100 * Length)
-      const BarUnplayed = ''
-      const Bar = `<color=#${HexPlayed}>${BarPlayed}<color=#${HexUnplayed}>${BarUnplayed}</color>`
-      return Bar;
-    } else {
-      const BarPlayed = Char.repeat(Progress(0) * Length)
-      const BarUnplayed = Char.repeat(Length * 100 - Progress(0) * Length)
-      const Bar = `<color=#${HexPlayed}>${BarPlayed}<color=#${HexUnplayed}>${BarUnplayed}</color>`
-      return Bar;
-    }
-  }
-  static SongProgressBar(HexPlayed = '999999', HexUnplayed = 'ffffff', Length = 3, Char = '|') {
-    if (Lib.RawSongPercentage() === 100 && CurMinute()=== 0 && CurSecond() === 0) {
-      const BarPlayed = Char.repeat(100 * Length)
-      const BarUnplayed = ''
-      const Bar = `<color=#${HexPlayed}>${BarPlayed}<color=#${HexUnplayed}>${BarUnplayed}</color>`
-      return Bar;
-    } else {
-      const BarPlayed = Char.repeat(Lib.RawSongPercentage() * Length)
-      const BarUnplayed = Char.repeat(Length * 100 - Lib.RawSongPercentage() * Length)
-      const Bar = `<color=#${HexPlayed}>${BarPlayed}<color=#${HexUnplayed}>${BarUnplayed}</color>`
-      return Bar;
-    }
-  }
 
   static TitleDisplay(Hex = 'ffffff', LineSpacingPercentage = 65, SpeedSizePercentage = 70, SecondLineSizePercentage = 80, AuthorSizePercentage = 65) {
     const ArtistProcessed = Lib.ParseTitleTags(ArtistRaw());
@@ -258,12 +245,12 @@ class PlayerPerformanceDisplays {
     return `${Lib.CurJudgeColor()}${Timing(Decimals)}</color>ms`;
   }
 
-  static PureComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', MaxTrackedCombos = 3000, LabelSizePercentage = 35, LabelHex = 'ffffff', Label = 'Perfect Combo', ShowThreshold = 3) {
+  static PureComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', MaxTrackedCombos = 3000, ComboMaxSizePercentage = 150, LabelSizePercentage = 35, LabelHex = 'ffffff', Label = 'Perfect Combo', ShowThreshold = 3) {
     const ActualMaxTrackedCombos = (MaxTrackedCombos > (TotalTile() - 1)) ? (TotalTile() - 1) : MaxTrackedCombos;
-    return (Combo() >= ShowThreshold) ? `${Lib.GradientText('Combo', ShowThreshold, ActualMaxTrackedCombos, Hex1, Hex2, `<size=${MovingMan('Combo', 100, 150, 100, 800, 'true')}%>${Combo()}`)}
+    return (Combo() >= ShowThreshold) ? `${Lib.GradientText('Combo', ShowThreshold, ActualMaxTrackedCombos, Hex1, Hex2, `<size=${MovingMan('Combo', 100, ComboMaxSizePercentage, 100, 800, 'true')}%>${Combo()}`)}
 <size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size>` : ``
   }
-  static PerfectsComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', MaxTrackedCombos = 5000, LabelSizePercentage = 35, LabelHex = 'ffffff', Label = 'Perfects Combo', ShowThreshold = 5) {
+  static PerfectsComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', MaxTrackedCombos = 5000, ComboMaxSizePercentage = 150, LabelSizePercentage = 35, LabelHex = 'ffffff', Label = 'Perfects Combo', ShowThreshold = 5) {
     const ActualMaxTrackedCombos = (MaxTrackedCombos > (TotalTile() - 1)) ? (TotalTile() - 1) : MaxTrackedCombos;
 
     const PerfectsCombo = MarginCombos('Perfect|EarlyPerfect|LatePerfect');
@@ -271,25 +258,25 @@ class PlayerPerformanceDisplays {
     const MaxRange = MinRange + ActualMaxTrackedCombos;
 
     return (PerfectsCombo >= ShowThreshold)
-      ? `<size=${(CHitRaw() >= 1 && CHitRaw() <= 3) ? MovingMan('CurTile', 100, 150, 100, 800, 'true') : 100}%>${Lib.GradientText('CurTile', MinRange, MaxRange, Hex1, Hex2, PerfectsCombo)}</size>
+      ? `<size=${(CHitRaw() >= 1 && CHitRaw() <= 3) ? MovingMan('CurTile', 100, ComboMaxSizePercentage, 100, 800, 'true') : 100}%>${Lib.GradientText('CurTile', MinRange, MaxRange, Hex1, Hex2, PerfectsCombo)}</size>
 <size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size>` : '';
   }
-  static ActualComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', MaxTrackedCombos = 10000, LabelSizePercentage = 35, LabelHex = 'ffffff', Label = 'Combo', ShowThreshold = 10) {
+  static ActualComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', MaxTrackedCombos = 10000, ComboMaxSizePercentage = 150, LabelSizePercentage = 35, LabelHex = 'ffffff', Label = 'Combo', ShowThreshold = 10) {
     const ActualMaxTrackedCombos = (MaxTrackedCombos > (TotalTile() - 1)) ? (TotalTile() - 1) : MaxTrackedCombos;
     
     const ActualCombo = MarginCombos('Perfect|EarlyPerfect|LatePerfect|VeryEarly|VeryLate');
     const MinRange = CurTile() - ActualCombo + ShowThreshold;
     const MaxRange = MinRange + ActualMaxTrackedCombos;
     return (ActualCombo >= ShowThreshold)
-      ? `<size=${(CHitRaw() >= 1 && CHitRaw() <= 5) ? MovingMan('CurTile', 100, 150, 100, 800, 'true') : 100}%>${Lib.GradientText('CurTile', MinRange, MaxRange, Hex1, Hex2, ActualCombo)}</size>
+      ? `<size=${(CHitRaw() >= 1 && CHitRaw() <= 5) ? MovingMan('CurTile', 100, ComboMaxSizePercentage, 100, 800, 'true') : 100}%>${Lib.GradientText('CurTile', MinRange, MaxRange, Hex1, Hex2, ActualCombo)}</size>
 <size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size>` : '';
   }
-  static AdaptiveComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff') {
+  static AdaptiveComboDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', ComboMaxSizePercentage = 150, LabelSizePercentage = 35, LabelHex = 'ffffff') {
     const IsAutoOn = (IsAutoEnabled() === true);
-    if (IsAutoOn) return `<size=${MovingMan('Combo', 100, 150, 100, 800, 'true')}%><color=#${Extras.RGB(100)}>${Combo()}</color>\n<size=35%>Autoplay</size>`;
-    if (Difficulty() === 'Strict' && !IsAutoOn) return this.PureComboDisplay(Hex1, Hex2, 3000, 35, 'ffffff', 'Perfect Combo', 3);
-    if (Difficulty() === 'Lenient' && !IsAutoOn) return this.ActualComboDisplay(Hex1, Hex2, 10000, 35, 'ffffff', 'Combo', 10);
-    if (Difficulty() === 'Normal' && !IsAutoOn) return this.PerfectsComboDisplay(Hex1, Hex2, 5000, 35, 'ffffff', 'Perfects Combo', 5);
+    if (IsAutoOn) return `<size=${MovingMan('Combo', 100, ComboMaxSizePercentage, 100, 800, 'true')}%><color=#${Extras.RGB(100)}>${Combo()}</color>\n<size=35%>Autoplay</size>`;
+    if (Difficulty() === 'Strict' && !IsAutoOn) return this.PureComboDisplay(Hex1, Hex2, 3000, ComboMaxSizePercentage, LabelSizePercentage, LabelHex, 'Perfect Combo', 3);
+    if (Difficulty() === 'Lenient' && !IsAutoOn) return this.ActualComboDisplay(Hex1, Hex2, 10000, ComboMaxSizePercentage, LabelSizePercentage, LabelHex, 'Combo', 10);
+    if (Difficulty() === 'Normal' && !IsAutoOn) return this.PerfectsComboDisplay(Hex1, Hex2, 5000, ComboMaxSizePercentage, LabelSizePercentage, LabelHex, 'Perfects Combo', 5);
   }
 
   static AdaptiveStatusLabel(Hex1, Hex2, ProgressDecimals = 2, MarginDecimals = 2) {
@@ -297,36 +284,43 @@ class PlayerPerformanceDisplays {
     const ColoredDifficulty = `<color=${Difficulties[DifficultyRaw()] || Difficulties['Normal']}>${DifficultyRaw()}</color>`;
     const AutoplayLabel = (IsAutoEnabled() === true) ? ` (<color=#${Extras.RGB(100)}>Autoplayed</color>)` : '';
 
-    if (CurTile() !== TotalTile()) {
-      return `Hit Margin Scale | <size=${MovingMan('MarginScale', 100, 150, 100, 800, 'true')}%>${Lib.GradientText('MarginScale', 25, 100, Hex1, Hex2, MarginScale(MarginDecimals) * 100)}</color>%</size>`;
+    if (Fixes.FixedCurTile() !== Fixes.CalculatedTotalTile() && Fixes.FixedCurTile() > 0) {
+      return `Hit Margin Scale | <size=${MovingMan('MarginScale', 100, 150, 100, 800, 'true')}%>${Lib.GradientText('MarginScale', 25, 100, Hex1, Hex2, MarginScale(MarginDecimals))}</color>%</size>`;
     }
-
-    if (StartProgress() === 100 && CurTile === -1) return '';
-
-    if (TotalTile() === 0 && StartTile() >= 1) return '';
-
-    if (StartTile() === 1 && Progress(0) === 100) {
+    if (Fixes.FixedCurTile() === 0) {
+      return 'Get Ready...';
+    }
+    if (StartTile() === 0 && Progress() === 100) {
       if (XAccuracy() === 100) return `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>${AutoplayLabel}`;
-      if (MissCount() > 0 || Overloads() > 0) return `${ColoredDifficulty} Difficulty <color=#${FOHex()}>${MissCount() + Overloads()} Death <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-      if (Fixes.CalculatedTE() === 0 && CVE() === 0 && CVL() === 0 && CTL() === 0) return `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-      if (Fixes.CalculatedTE() === 0) return `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-      return `${ColoredDifficulty} Difficulty <color=#ffffff>Cleared! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
+      if (MissCount() > 0 || Overloads() > 0) return `${ColoredDifficulty} Difficulty <color=#${FOHex()}>${MissCount() + Overloads()} Death <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
+      if (Fixes.CalculatedTE() + CVL() + CV() === 0) return `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
+      if (Fixes.CalculatedTE() === 0) return `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
+      return `${ColoredDifficulty} Difficulty <color=#ffffff>Cleared! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
+    } else if (StartTile() !== 0 && Progress() === 100 && StartTile() !== Fixes.CalculatedTotalTile()) {
+      if (XAccuracy() === 100) return `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ <color=#${Hex2}>100<color=#ffffff>% ` + `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>${AutoplayLabel}`;
+      if (MissCount() > 0 || Overloads() > 0) return `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ <color=#${Hex2}>100<color=#ffffff>% ` + `${ColoredDifficulty} Difficulty <color=#${FOHex()}>${MissCount() + Overloads()} Death <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
+      if (Fixes.CalculatedTE() + CVL() + CVE() === 0) return `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ <color=#${Hex2}>100<color=#ffffff>% ` + `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
+      if (Fixes.CalculatedTE() === 0) return `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ <color=#${Hex2}>100<color=#ffffff>% ` + `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
+      return `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ <color=#${Hex2}>100<color=#ffffff>% ` + `${ColoredDifficulty} Difficulty <color=#ffffff>Cleared! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>${AutoplayLabel}`;
     }
-
-    const ProgressDisplay = `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ ${Lib.GradientText('Progress', 0, 100, Hex1, Hex2, Progress(ProgressDecimals))}<color=#ffffff>% `;
-
-    if (XAccuracy() === 100) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#ffda00>Pure Perfect!</color>${AutoplayLabel}`;
-
-    if (Progress(0) === 100) {
-      if (MissCount() === 0 && Overloads() === 0) {
-        if (Fixes.CalculatedTE() === 0 && CVE() === 0 && CVL() === 0 && CTL() === 0) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#a0ff4e>All Perfect! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-        if (Fixes.CalculatedTE() === 0) return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#87cefa>Full Combo! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-        return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#ffffff>Cleared! <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
-      }
-      return ProgressDisplay + `${ColoredDifficulty} Difficulty <color=#${FOHex()}>${MissCount() + Overloads()} Death <color=#ffffff>(Max Combo <color=#87cefa>${MaxCombo()}<color=#ffffff>)</color>`;
+    if (Progress() === 100 && StartTile() === Fixes.CalculatedTotalTile()) {
+      return "Started From Last Tile";
     }
+  }
+}
 
-    return 'Get Ready...';
+class UIComponents {
+  static Box(Width = 40, Height = 1, BorderHex = 'ffffff', LineSpacingPercentage = 100) {
+    const Horizontal = '─'.repeat(Width - 2);
+
+    const Top    = `╭${Horizontal}╮`;
+    const Middle = `│${' '.repeat(Width - 2)}│`;
+    const Bottom = `╰${Horizontal}╯`;
+
+    const Lines = [Top, ...Array(Height).fill(Middle), Bottom];
+    const Content = Lines.join('\n');
+
+    return `<color=#${BorderHex}><line-height=${LineSpacingPercentage}%>${Content}</line-height></color>`;
   }
 }
 
@@ -340,6 +334,14 @@ class Fixes {
 
     const CalculatedValue = Lib.Round((R * BaseJudges - KnownSum) / (0.2 - R), 0);
     return isFinite(CalculatedValue) && CalculatedValue >= 0 ? CalculatedValue : 0;
+  }
+
+  static CalculatedTotalTile() {
+    return Lib.Round((StartTile() + 1) / (StartProgress() / 100), 0) - 1;
+  }
+
+  static FixedCurTile() {
+    return CurTile() === 0 && Progress() === 100 ? this.CalculatedTotalTile() : CurTile();
   }
 }
 
@@ -632,10 +634,10 @@ registerTag('TileProgressDisplay', function (Hex1, Hex2, Hex3) {
 }, true, '[UI Component] Displays current tile, total tiles, and tiles left.\nParameters: (Hex1, Hex2, Hex3)\nDisplayed As: 123 / 456 (-333)')
 
 registerTag('TileProgressBar', function (HexPlayed, HexUnplayed, Length, Char) {
-  return LevelInfoDisplays.TileProgressBar(HexPlayed, HexUnplayed, Length, Char);
+  return 'This tag is deprecated, use the newest version of ProgressBar mod.'// LevelInfoDisplays.TileProgressBar(HexPlayed, HexUnplayed, Length, Char);
 }, true, '[UI Component] Displays a progress bar based on tile progress.\nParameters: (HexPlayed, HexUnplayed, Length, Char)')
 registerTag('SongProgressBar', function (HexPlayed, HexUnplayed, Length, Char) {
-  return LevelInfoDisplays.SongProgressBar(HexPlayed, HexUnplayed, Length, Char);
+  return 'This tag is deprecated, use the newest version of ProgressBar mod.'// LevelInfoDisplays.SongProgressBar(HexPlayed, HexUnplayed, Length, Char);
 }, true, '[UI Component] Displays a progress bar based on song progress.\nParameters: (HexPlayed, HexUnplayed, Length, Char)')
 
 registerTag('TitleDisplay', function (Hex, LineSpacing, SpeedSizePercentage, SecondLineSizePercentage, AuthorSizePercentage) {
@@ -669,9 +671,20 @@ registerTag('AdaptiveStatusLabel', function (Hex1, Hex2, ProgressDecimals) {
 }, true, '[UI Component] Displays a status label based on current performance, difficulty, and Margin Scale.\nParameters: (Hex1, Hex2, ProgressDecimals)')
 
 
+registerTag('BorderBox', function (Width, Height, BorderHex, LineSpacingPercentage) {
+  return UIComponents.Box(Width, Height, BorderHex, LineSpacingPercentage);
+}, true, '[UI Component] Displays a box with specified dimensions and border color. Use a monospace font for best results.\nParameters: (Width, Height, BorderHex, LineSpacingPercentage)')
+
+
 registerTag('CalculatedTE', function() {
   return Fixes.CalculatedTE();
 }, true, '[Fixed Tag] A fixed version of the CTE() tag that calculates the value based on known information and weighted assumptions to provide a more accurate estimation.')
+registerTag('CalculatedTotalTile', function() {
+  return Fixes.CalculatedTotalTile();
+}, true, '[Fixed Tag] A fixed version of the TotalTile() tag that estimates the total tile count based on the starting tile and progress percentage when the level is finished.')
+registerTag('FixedCurTile', function() {
+  return Fixes.FixedCurTile();
+}, true, '[Fixed Tag] A fixed version of the CurTile() tag that fixes an edge case to provide a more accurate current tile count when the level is finished.')
 
 
 registerTag('RGB', function (OpacityPercentage) {
