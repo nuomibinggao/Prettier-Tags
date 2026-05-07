@@ -6,7 +6,7 @@ It is based on iTags, Better iTags Alpha, Not Enough Tags, and maimai.js.
 
 ## Compatibility
 The "Zero" versions are complete rewrites of the tags found in the original scripts for readability and maintainability. They remove all the clutter and junk code from the original scripts, organize the codebase, and simplify/unify the implementation. 
-The scripts from Release 3 on are tested on ADOFAI 2.9.8, Overlayer 3.44.0, and Overlayer.Scripting 1.11.1, older versions' compatibility is not guaranteed.
+The scripts from Release 4 on are tested on ADOFAI 2.9.8 and Overlayer 3.49.0, older versions' compatibility is not guaranteed.
 This script is in the Alpha testing phase; features may be incomplete or broken depending on your environment. Your older files may be deleted or corrupted; use at your own risk.
 
 ## Credits
