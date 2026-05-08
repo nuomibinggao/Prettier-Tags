@@ -671,6 +671,7 @@ below the "Playing Text', and hover over each tag name to see its description an
 <size=110%>Credits</size>
 SamXU1322 & a6. for iTags Scripts and overall inspiration.
 MLob_302 for maimai.js Script.
+BadWolf for XPerfect Mod compatibility code.
 `;
   }
 }
