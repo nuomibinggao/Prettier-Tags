@@ -666,7 +666,7 @@ It is based on iTags, Better iTags Alpha, Not Enough Tags, and maimai.js, and ma
 Please make sure to update your Overlayer mod to the latest version to ensure the best experience with Prettier Tags.
 
     For instructions, examples, and parameter explanations of each tag, create or edit any text, and click the left most button
-below the "Playing Text', and hover over each tag name to see its description and parameters.
+below the "Playing Text", and hover over each tag name to see its description and parameters.
 
 <size=110%>Credits</size>
 SamXU1322 & a6. for iTags Scripts and overall inspiration.
