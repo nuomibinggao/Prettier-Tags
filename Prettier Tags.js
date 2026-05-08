@@ -1,6 +1,6 @@
 /* 
 https://github.com/nuomibinggao/Prettier-Tags
-Version I Release 1
+Version I Release 1 Hotfix 1
 For Overlayer v3.49.0 (Beta)
 */
 
@@ -362,7 +362,7 @@ class PlayerPerformanceDisplays {
     const DifficultyLabels = { 'Strict': '<color=#b11a1a>All Strict</color>', 'Lenient': '<color=#3acf4e>Lenient</color> Difficulty', 'Normal': '<color=#ffffff>Normal</color> Difficulty' };
     const ColoredDifficulty = `${DifficultyLabels[DifficultyRaw()]}</color>`;
     const AutoplayLabel = (IsAutoEnabled() === true) ? `(<color=#${Extras.RGB(100)}>Autoplayed</color>)` : '';
-    const MaxComboLabel = Lib.RunStatus() === 'PP' ? '' : `(Max Combo <color=#${Lib.RunStatusHex()}>${MaxCombo()}</color>)`;
+    const MaxComboLabel = Lib.RunStatus() === 'PP' ? '' : `<color=#ffffff>(Max Combo <color=#${Lib.RunStatusHex()}>${MaxCombo()}</color>)`;
 
     if (Fixes.FixedCurTile() !== Fixes.CalculatedTotalTile() && Fixes.FixedCurTile() > 0) {
       return `Hit Margin Scale | <size=${MovingMan('MarginScale', 100, 150, 100, 800, 'true')}%>${Lib.ValueBasedColorRange(Math.abs(MarginScale() - 100), 0, 75, Hex1, Hex2, MarginScale(MarginDecimals))}</color>%</size>`;
@@ -393,6 +393,37 @@ class UIComponents {
     const Content = Lines.join('\n');
 
     return `<color=#${BorderHex}><line-height=${LineSpacingPercentage}%>${Content}</line-height></color>`;
+  }
+
+  static Judgments(Spaces = 2) {
+    return `<size=${MovingMan('Overloads', 100, 125, 100, 800, 'true')}%><color=#${FOHex()}>${Overloads()}
+<size=${MovingMan('CalculatedTE', 100, 125, 100, 800, 'true')}%><color=#${TEHex()}>${Fixes.CalculatedTE()}
+<size=${MovingMan('CVE', 100, 125, 100, 800, 'true')}%><color=#${VEHex()}>${CVE()}
+<size=${MovingMan('CEP', 100, 125, 100, 800, 'true')}%><color=#${EPHex()}>${CEP()}
+<size=${MovingMan('CP', 100, 125, 100, 800, 'true')}%><color=#${PHex()}>${CP()}
+<size=${MovingMan('CLP', 100, 125, 100, 800, 'true')}%><color=#${EPHex()}>${CLP()}
+<size=${MovingMan('CVL', 100, 125, 100, 800, 'true')}%><color=#${VEHex()}>${CVL()}
+<size=${MovingMan('CTL', 100, 125, 100, 800, 'true')}%><color=#${TEHex()}>${CTL()}
+<size=${MovingMan('MissCount', 100, 125, 100, 800, 'true')}%><color=#${FOHex()}>${MissCount()}
+</color></size>`.replace(/\n/g, ' '.repeat(Spaces));
+  }
+  static JudgmentsWithX(Spaces = 1) {
+    try {
+      return `<size=${MovingMan('Overloads', 100, 125, 100, 800, 'true')}%><color=#${FOHex()}>${Overloads()}
+<size=${MovingMan('CalculatedTE', 100, 125, 100, 800, 'true')}%><color=#${TEHex()}>${Fixes.CalculatedTE()}
+<size=${MovingMan('CVE', 100, 125, 100, 800, 'true')}%><color=#${VEHex()}>${CVE()}
+<size=${MovingMan('CEP', 100, 125, 100, 800, 'true')}%><color=#${EPHex()}>${CEP()}
+<size=${MovingMan('OMP', 100, 125, 100, 800, 'true')}%><color=#${PHex()}>${OMP()}
+<size=${MovingMan('OXP', 100, 125, 100, 800, 'true')}%><color=#4cccff>${OXP()}
+<size=${MovingMan('OPP', 100, 125, 100, 800, 'true')}%><color=#${PHex()}>${OPP()}
+<size=${MovingMan('CLP', 100, 125, 100, 800, 'true')}%><color=#${EPHex()}>${CLP()}
+<size=${MovingMan('CVL', 100, 125, 100, 800, 'true')}%><color=#${VEHex()}>${CVL()}
+<size=${MovingMan('CTL', 100, 125, 100, 800, 'true')}%><color=#${TEHex()}>${CTL()}
+<size=${MovingMan('MissCount', 100, 125, 100, 800, 'true')}%><color=#${FOHex()}>${MissCount()}
+</color></size>`.replace(/\n/g, ' '.repeat(Spaces));
+    } catch (e) {
+      return this.Judgments(Spaces);
+    }
   }
 }
 
@@ -444,6 +475,7 @@ class Extras {
     return Lib.ValueBasedColorRange(Value, MinRange, MaxRange, Hex1, Hex2, Text);
   }
 }
+
 
 class OtherGamesStyleDisplays {
   // Originally from maimai.js
@@ -634,7 +666,7 @@ It is based on iTags, Better iTags Alpha, Not Enough Tags, and maimai.js, and ma
 Please make sure to update your Overlayer mod to the latest version to ensure the best experience with Prettier Tags.
 
     For instructions, examples, and parameter explanations of each tag, create or edit any text, and click the left most button
-below the "Playing Text", and hover over each tag name to see its description and parameters.
+below the "Playing Text', and hover over each tag name to see its description and parameters.
 
 <size=110%>Credits</size>
 SamXU1322 & a6. for iTags Scripts and overall inspiration.
@@ -776,6 +808,13 @@ registerTag('BorderBox', function (Width, Height, BorderHex, LineSpacingPercenta
   return UIComponents.Box(Width, Height, BorderHex, LineSpacingPercentage);
 }, true, '[UI Component] Displays a box with specified dimensions and border color. Use a monospace font for best results.\nParameters: (Width, Height, BorderHex, LineSpacingPercentage)')
 
+registerTag('Judgments', function (Spaces) {
+  return UIComponents.Judgments(Spaces);
+}, true, '[UI Component] Displays all judgment counts in a fancy way with different colors and sizes based on the current judges.\nParameters: (Spaces)')
+registerTag('JudgmentsWithX', function (Spaces) {
+  return UIComponents.JudgmentsWithX(Spaces);
+}, true, '<ALPHA WARNING - UNSTABLE> [UI Component] Displays all judgment counts including the XPerfect judgments from the XPerfect Mod in a fancy way with different colors and sizes based on the current judges.\nParameters: (Spaces)')
+
 
 registerTag('CalculatedTE', function() {
   return Fixes.CalculatedTE();
@@ -795,6 +834,7 @@ registerTag('ValueBasedColorRange', function (Value, MinRange, MaxRange, Hex1, H
   return Extras.ValueBasedColorRange(Value, MinRange, MaxRange, Hex1, Hex2, Text);
 }, true, '[Utility] Generates colored text based on the value within the specified range.\nParameters: (Value, MinRange, MaxRange, Hex1, Hex2, Text)')
 
+
 registerTag('maimaiStyleScoreDisplay', function (Style) {
   return OtherGamesStyleDisplays.maimaiStyleScoreDisplay(Style);
 }, true, '[UI Component] Displays a maimai-style score display based on selected style.\nParameters: (Style), Available Styles: Achv1, Achv2, BorderS, BorderSP, BorderSS, BorderSSP, DXS1, DXS2\nOriginally from maimai.js by MLob_302.')
@@ -810,3 +850,33 @@ registerTag('RDStyleResultsDisplay', function () {
 registerTag('Helper', function () {
   return Others.Helper();
 }, true, '[README] This is a helper tag for displaying useful information when using this script,\nif you are new, START HERE! Insert {Helper} to start.\nPlease use any left alignment for best reading experience.')
+
+// Compatibility layer for the XPerfect Mod, originally by BadWolf, and adapted to work with other tags
+try {
+  const AccuracyState = resolveClrType('XPerfect.AccuracyState, XPerfect');
+
+  const XPerfectCount = () => getAttr(AccuracyState, 'XPerfectCount');
+  const MinusPerfectCount = () => getAttr(AccuracyState, 'MinusPerfectCount');
+  const PlusPerfectCount = () => getAttr(AccuracyState, 'PlusPerfectCount');
+
+  if (XPerfectCount() + MinusPerfectCount() + PlusPerfectCount() === CP() && CP() > 0) {
+      registerTag('OXP', () => XPerfectCount(), false, '<ALPHA WARNING - UNSTABLE> [Tag] XPerfect count from the XPerfect mod.\nOriginally by BadWolf.');
+      registerTag('OMP', () => MinusPerfectCount(), false, '<ALPHA WARNING - UNSTABLE> [Tag] -Perfect count from the XPerfect mod.\nOriginally by BadWolf.');
+      registerTag('OPP', () => PlusPerfectCount(), false, '<ALPHA WARNING - UNSTABLE> [Tag] +Perfect count from the XPerfect mod.\nOriginally by BadWolf.');
+
+      registerTag('XPHex', () => '4cccff', false, '[Tag] Hex color for the XPerfect judgment from the XPerfect mod.\nOriginally by BadWolf.');
+
+      let LastJudge = 0;
+      let XCombo = 0;
+
+      hit(() => {
+          LastJudge = getAttr(AccuracyState, 'LastJudge');
+          if (LastJudge === 1) XCombo++;
+          else XCombo = 0;
+      });
+
+      rewind(() => { LastJudge = 0; XCombo = 0; });
+
+      registerTag('XCombo', () => XCombo, false, '<ALPHA WARNING - UNSTABLE> [Tag] Current XPerfect combo count from the XPerfect mod.\nOriginally by BadWolf.');
+  }
+} catch (e) {}
