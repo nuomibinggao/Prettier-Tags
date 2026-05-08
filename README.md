@@ -1,12 +1,12 @@
 # Prettier Tags
 
 ## Description
-Prettier Tags is an open-source script for the [Overlayer](https://github.com/modlist-org/Overlayer) and [Overlayer.Scripting](https://github.com/modlist-org/Overlayer.Scripting) mod made for the game A Dance of Fire and Ice.
+Prettier Tags is an open-source script for the [Overlayer](https://github.com/modlist-org/Overlayer) mod made for the game A Dance of Fire and Ice.
 It is based on iTags, Better iTags Alpha, Not Enough Tags, and maimai.js.
 
 ## Compatibility
-The "Zero" versions are complete rewrites of the tags found in the original scripts for readability and maintainability. They remove all the clutter and junk code from the original scripts, organize the codebase, and simplify/unify the implementation. 
-The scripts from Release 4 on are tested on ADOFAI 2.9.8 and Overlayer 3.49.0, older versions' compatibility is not guaranteed.
+The "Zero" versions are complete rewrites of the tags from the original scripts to improve readability and maintainability. They remove all the clutter and junk code from the original scripts, organize the codebase, and simplify/unify the implementation. 
+The scripts from Release 4 onward are tested on ADOFAI 2.9.8 and Overlayer 3.49.0; compatibility with older versions is not guaranteed.
 This script is in the Alpha testing phase; features may be incomplete or broken depending on your environment. Your older files may be deleted or corrupted; use at your own risk.
 
 ## Credits
