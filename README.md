@@ -5,9 +5,7 @@ Prettier Tags is an open-source script for the [Overlayer](https://github.com/mo
 It is based on iTags, Better iTags Alpha, Not Enough Tags, and maimai.js.
 
 ## Compatibility
-The "Zero" versions are complete rewrites of the tags from the original scripts to improve readability and maintainability. They remove all the clutter and junk code from the original scripts, organize the codebase, and simplify/unify the implementation. 
-The scripts from Release 4 onward are tested on ADOFAI 2.9.8 and Overlayer 3.49.0; compatibility with older versions is not guaranteed.
-This script is in the Alpha testing phase; features may be incomplete or broken depending on your environment. Your older files may be deleted or corrupted; use at your own risk.
+Tested on ADOFAI version 2.9.8 with Overlayer mod 3.49.0. Using older versions may work, but some tags may break or not function at all. Use at your own risk.
 
 ## Installation
 Download the Prettier.Tags.Zero.js file from [releases](https://github.com/nuomibinggao/Prettier-Tags/releases/latest), place it in your ADOFAI game path/Mods/Overlayer/Scripts/Prettier.Tags.Zero.js, and restart your game.
