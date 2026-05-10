@@ -1,6 +1,6 @@
 /* 
 https://github.com/nuomibinggao/Prettier-Tags
-Version I Release 1 Hotfix 1
+Version I Release 1 Iteration 2
 For Overlayer v3.49.0 (Beta)
 */
 
@@ -56,9 +56,9 @@ class Lib {
     const r = Math.round((a >> 16) + (((b >> 16) - (a >> 16)) * t));
     const g = Math.round(((a >> 8) & 255) + ((((b >> 8) & 255) - ((a >> 8) & 255)) * t));
     const bl = Math.round((a & 255) + (((b & 255) - (a & 255)) * t));
-    const hex = ((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1).toLowerCase();
+    const Hex = ((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1).toLowerCase();
 
-    return `<color=#${hex}>${Text}</color>`;
+    return `<color=#${Hex}>${Text}</color>`;
   } // This function is used when Native Tags are not avaliable for ColorRange, only use when neccessary.
 
   static ParseTitleTags(Tag) {
@@ -138,19 +138,31 @@ class Accuracies {
       let MaxAcc = (((CP() + LeftTile() + CEP() + CLP()) / (AllJudges + LeftTile() + MissCount() + Overloads())) + (CP() + LeftTile()) * 0.0001) * 100;
       const MaxXAcc = (((CP() + LeftTile() - 1) + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4 + Fixes.CalculatedTE() * 0.2) / (AllJudges + LeftTile() - 1) * (0.9875 ** CheckPointUsed())) * 100
 
-      MaxAcc = Number.isFinite(MaxAcc) ? Lib.Round(MaxAcc, Decimals) : 0
+      if (!Number.isFinite(MaxAcc)) MaxAcc = 0;
 
-        if (!Number.isFinite(MaxXAcc)) return `<color=#ffda00>100</color>%`
+      const MaxAccRounded = (MaxXAcc < 100 && Lib.Round(MaxAcc, Decimals) === 100)
+          ? `99.${'9'.repeat(Decimals)}`
+          : Lib.Round(MaxAcc, Decimals);
 
-        if (MaxXAcc === 100) return `<color=#ffda00>${Lib.Round(100 + (Fixes.CalculatedTotalTile() - StartTile()) * 0.01, Decimals)}</color>%`
+      if (!Number.isFinite(MaxXAcc)) return `<color=#ffda00>100</color>%`
 
-        return (Lib.RunStatus() !== 'NA') ? `<color=#${Lib.RunStatusHex()}>${MaxAcc}</color>%` : `${Lib.ValueBasedColorRange(MaxAcc, 0, 100, Hex2, Hex1, MaxAcc)}</color>%`
+      if (MaxXAcc === 100) return `<color=#ffda00>${Lib.Round(100 + (Fixes.CalculatedTotalTile() - StartTile()) * 0.01, Decimals)}</color>%`
+
+      return (Lib.RunStatus() !== 'NA')
+          ? `<color=#${Lib.RunStatusHex()}>${MaxAccRounded}</color>%`
+          : `${Lib.ValueBasedColorRange(MaxAccRounded, 0, 100, Hex2, Hex1, MaxAccRounded)}</color>%`
   }
-  static MaxPossibleXAcc(Hex1 = "ffffff", Hex2 = "ffffff", Decimals = 2) {
-    const AllJudges = CP() + CEP() + CLP() + CVE() + CVL() + Fixes.CalculatedTE() + MissCount() + Overloads()
-    const MaxXAcc = (((CP() + LeftTile() - 1) + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4 + Fixes.CalculatedTE() * 0.2) / (AllJudges + LeftTile() - 1) * (0.9875 ** CheckPointUsed())) * 100
+  static MaxPossibleXAcc(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
+      const AllJudges = CP() + CEP() + CLP() + CVE() + CVL() + Fixes.CalculatedTE() + MissCount() + Overloads()
+      const MaxXAcc = (((CP() + LeftTile() - 1) + (CEP() + CLP()) * 0.75 + (CVE() + CVL()) * 0.4 + Fixes.CalculatedTE() * 0.2) / (AllJudges + LeftTile() - 1) * (0.9875 ** CheckPointUsed())) * 100
 
-    return (Lib.RunStatus() !== 'NA') ? `<color=#${Lib.RunStatusHex()}>${Lib.Round(MaxXAcc, Decimals)}</color>%` : `${Lib.ValueBasedColorRange(MaxXAcc, 0, 100, Hex2, Hex1, Lib.Round(MaxXAcc, Decimals))}</color>%`;
+      const MaxXAccRounded = MaxXAcc === 100 ? 100 : (MaxXAcc >= 100 - 0.5 * Math.pow(10, -Decimals))
+          ? `99.${'9'.repeat(Decimals)}`
+          : Lib.Round(MaxXAcc, Decimals);
+
+      return (Lib.RunStatus() !== 'NA')
+          ? `<color=#${Lib.RunStatusHex()}>${MaxXAccRounded}</color>%`
+          : `${Lib.ValueBasedColorRange(MaxXAccRounded, 0, 100, Hex2, Hex1, MaxXAccRounded)}</color>%`;
   }
 
   static MultiAccDisplay(Hex1 = 'ffffff', Hex2 = 'ffffff', Decimals = 2) {
@@ -279,7 +291,7 @@ class LevelInfoDisplays {
     const TitleUnprocessed = Lib.ParseTitleTags(TitleRaw());
     const AuthorUnprocessed = Lib.ParseTitleTags(AuthorRaw());
 
-    const AuthorProcessed = AuthorUnprocessed ? `<color=#${Hex}><size=${AuthorSizePercentage}%>Map By ${AuthorUnprocessed}</size></color>\n` : '';
+    const AuthorProcessed = AuthorUnprocessed ? `<color=#${Hex}><size=${AuthorSizePercentage}%>Level By ${AuthorUnprocessed}</size></color>\n` : '';
 
     const ActualSpeed = Pitch() * EditorPitch();
     const SpeedDisplay = ActualSpeed !== 1 ? ` <color=#${Hex}><size=${SpeedSizePercentage}%>(${ActualSpeed}\u00d7)</size></color>` : '';
@@ -361,7 +373,7 @@ class PlayerPerformanceDisplays {
   static AdaptiveStatusLabel(Hex1, Hex2, ProgressDecimals = 2, MarginDecimals = 2) {
     const DifficultyLabels = { 'Strict': '<color=#b11a1a>All Strict</color>', 'Lenient': '<color=#3acf4e>Lenient</color> Difficulty', 'Normal': '<color=#ffffff>Normal</color> Difficulty' };
     const ColoredDifficulty = `${DifficultyLabels[DifficultyRaw()]}</color>`;
-    const AutoplayLabel = (IsAutoEnabled() === true) ? `(<color=#${Extras.RGB(100)}>Autoplayed</color>)` : '';
+    const AutoplayLabel = (IsAutoEnabled() === true) ? `<color=#ffffff>(<color=#${Extras.RGB(100)}>Autoplayed</color>)` : '';
     const MaxComboLabel = Lib.RunStatus() === 'PP' ? '' : `<color=#ffffff>(Max Combo <color=#${Lib.RunStatusHex()}>${MaxCombo()}</color>)`;
 
     if (Fixes.FixedCurTile() !== Fixes.CalculatedTotalTile() && Fixes.FixedCurTile() > 0) {
@@ -371,7 +383,7 @@ class PlayerPerformanceDisplays {
       return 'Get Ready...';
     }
     if (StartTile() === 0 && Progress() === 100) {
-      return `${ColoredDifficulty} ${Lib.RunStatusLabel()} ${MaxComboLabel}</color>${AutoplayLabel}`;
+      return `${ColoredDifficulty} ${Lib.RunStatusLabel()} ${MaxComboLabel}</color> ${AutoplayLabel}`;
     } else if (StartTile() !== 0 && Progress() === 100 && StartTile() !== Fixes.CalculatedTotalTile()) {
       return `${Lib.GradientText('StartProgress', 0, 100, Hex1, Hex2, StartProgress(ProgressDecimals))}<color=#ffffff>% ~ <color=#${Hex2}>100<color=#ffffff>% ` + `${ColoredDifficulty} ${Lib.RunStatusLabel()} ${MaxComboLabel}</color>${AutoplayLabel}`;
     }
