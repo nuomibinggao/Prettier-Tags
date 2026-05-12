@@ -6,9 +6,12 @@ It is based on iTags, Better iTags Alpha, Not Enough Tags, maimai.js, and code b
 
 ## Compatibility
 Tested on ADOFAI version 2.9.8 with Overlayer mod 3.49.0. Using older versions may work, but some tags may break or not function at all. Use at your own risk.
+Certain tags such as GPU usage metrics will only work on Windows systems due to how the Overlayer mod is coded.
+Certain tags require other mods to work. For example, the XPerfect tags need [XPerfect](https://github.com/8100print/XPerfect) 1.3.0 or above to work.
+
 
 ## Installation
-Download the Prettier.Tags.js file from [releases](https://github.com/nuomibinggao/Prettier-Tags/releases/latest), place it in your ADOFAI game path/Mods/Overlayer/Scripts/Prettier.Tags.js, and restart your game.
+Download the Prettier.Tags.js file from [releases](https://github.com/nuomibinggao/Prettier-Tags/releases), place it in your ADOFAI game path/Mods/Overlayer/Scripts/Prettier.Tags.js, and restart your game.
 
 ## Credits
 - [SamXU1322](https://space.bilibili.com/512479134) for iTags Scripts.
