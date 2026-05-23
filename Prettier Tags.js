@@ -1,6 +1,6 @@
 /*
 https://github.com/nuomibinggao/Prettier-Tags
-Version I Release 2 Iteration 1
+Version I Release 2 Iteration 2
 For Overlayer v3.49.0 (Beta) and XPerfect v1.3.1 (Optional)
 */
 
@@ -825,7 +825,7 @@ registerTag(
     );
   },
   true,
-  "[UI Component] Displayes current FPS and the target FPS.\nParameters: (Hex1, Hex2, WarningHex, WarningThreshold, Decimals)\nDisplayed As: 59.97 / 60",
+  "[UI Component] Displays current FPS and the target FPS.\nParameters: (Hex1, Hex2, WarningHex, WarningThreshold, Decimals)\nDisplayed As: 59.97 / 60",
 );
 registerTag(
   "FrameTimeDisplay",
@@ -893,76 +893,122 @@ class LevelInfoDisplays {
     SpeedSizePercentage = 70,
     SecondLineSizePercentage = 80,
     AuthorSizePercentage = 65,
-    CJKCharSizePercentage = 110,
+    CJKCharSizePercentage = 100,
   ) {
     const O = OverallSizePercentage;
-    const ParseAndScale = (str, contextSize) =>
-      str
-        ? str
-            .replace(/color\s*=\s*(['\"])(.*?)\1/gi, "color=$2")
-            .replace(
-              /<size=(\d+(?:\.\d+)?)(?!%)>/gi,
-              (_, val) =>
-                `<size=${Math.round((parseFloat(val) / 85) * contextSize)}%>`,
-            )
-            .replace(
-              /<color=#([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?>/g,
-              (match, hex6, alpha) =>
-                alpha === "00" ? match : `<color=#${hex6}>`,
-            )
-        : "";
-    const ArtistProcessed = ParseAndScale(ArtistRaw(), O);
+
+    const CJK_RE =
+      /[\u3000-\u9fff\ua000-\ua48f\ua490-\ua4ff\ua960-\ua97f\uac00-\ud7ff\uf900-\ufaff\ufe10-\ufe1f\ufe30-\ufe4f\ufe50-\ufe6f\uff00-\uffef\u{1b000}-\u{1b0ff}\u{1b100}-\u{1b12f}\u{1b170}-\u{1b2ff}\u{20000}-\u{2a6df}\u{2a700}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}]/u;
+
+    const ParseScaleAndWrapCJK = (Str, ContextSize) => {
+      if (!Str) return "";
+      const Normalized = Str.replace(
+        /color\s*=\s*(['"])(.*?)\1/gi,
+        "color=$2",
+      ).replace(
+        /<color=#([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?>/g,
+        (_, Hex6, Alpha) => (Alpha === "00" ? "" : `<color=#${Hex6}>`),
+      );
+
+      let ActiveSize = ContextSize;
+      const SizeStack = [];
+
+      return Normalized.replace(
+        /(<size=(\d+(?:\.\d+)?)(?!%)>)|(<size=(\d+(?:\.\d+)?)%>)|(<\/size>)|(<[^>]*>)|(\S)/gu,
+        (Match, AbsOpen, AbsVal, PctOpen, PctVal, Close, OtherTag, Char) => {
+          if (AbsOpen) {
+            const Scaled = Lib.Round((AbsVal / 85) * ActiveSize, 0);
+            SizeStack.push(ActiveSize);
+            ActiveSize = Scaled;
+            return `<size=${Scaled}%>`;
+          }
+          if (PctOpen) {
+            SizeStack.push(ActiveSize);
+            ActiveSize = parseFloat(PctVal);
+            return Match;
+          }
+          if (Close) {
+            ActiveSize = SizeStack.pop() ?? ContextSize;
+            return Match;
+          }
+          if (OtherTag) return Match;
+          if (Char && CJK_RE.test(Char)) {
+            const CJKSize = Lib.Round(
+              (CJKCharSizePercentage * ActiveSize) / 100,
+              0,
+            );
+            return `<size=${CJKSize}%>${Char}</size>`;
+          }
+          return Match;
+        },
+      );
+    };
+
+    const SplitTitle = (Str) => {
+      const Cleaned = Str.replace(
+        /\n(?:\s*<color=#(?:[A-Fa-f0-9]{6})?00>)*\s*$/gim,
+        "",
+      );
+      const Idx = Cleaned.search(/\n| {10,}/);
+      if (Idx === -1) return [Cleaned, null];
+      const Rest = Cleaned.slice(Idx).replace(/^\n| {10,}/, "");
+      return [Cleaned.slice(0, Idx), Rest];
+    };
+
+    const StripLeadingTransparent = (Str) =>
+      Str.replace(
+        /^((?:\s*(?:<size=[^>]*>|<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>))*)/,
+        (Match) =>
+          Match.replace(
+            /<color=(?:"#|'#|#)[A-Fa-f0-9]{6}([A-Fa-f0-9]{2})?(?:"|')?>/gi,
+            (Tag, Alpha) => (Alpha?.toLowerCase() === "00" ? "" : Tag),
+          ),
+      );
+
+    const ArtistRawStr = ArtistRaw();
     const TitleRawStr = TitleRaw();
-    const AuthorUnprocessed = ParseAndScale(
-      AuthorRaw(),
-      (AuthorSizePercentage * O) / 100,
-    );
-    const AuthorProcessed = AuthorUnprocessed
-      ? `<color=#${Hex}><size=${(AuthorSizePercentage * O) / 100}%>Level By ${Lib.WrapCJK(AuthorUnprocessed, CJKCharSizePercentage, (AuthorSizePercentage * O) / 100)}</size></color>\n`
-      : "";
+    const AuthorRawStr = AuthorRaw();
     const ActualSpeed = Pitch() * EditorPitch();
+
+    const SecondCtx = Lib.Round((SecondLineSizePercentage * O) / 100, 0);
+    const AuthorCtx = Lib.Round((AuthorSizePercentage * O) / 100, 0);
+    const SpeedCtx = Lib.Round((SpeedSizePercentage * O) / 100, 0);
+
+    const ArtistProcessed = ParseScaleAndWrapCJK(ArtistRawStr, O);
+
+    const [TitleLine1, TitleLine2] = SplitTitle(
+      ParseScaleAndWrapCJK(TitleRawStr, O),
+    );
+    const [, TitleLine2Rescaled] =
+      TitleLine2 != null
+        ? SplitTitle(ParseScaleAndWrapCJK(TitleRawStr, SecondCtx))
+        : [null, null];
+
+    const AuthorProcessed = ParseScaleAndWrapCJK(AuthorRawStr, AuthorCtx);
+
     const SpeedDisplay =
       ActualSpeed !== 1
-        ? ` <color=#${Hex}><size=${(SpeedSizePercentage * O) / 100}%>(${ActualSpeed}\u00d7)</size></color>`
+        ? ` <color=#${Hex}><size=${SpeedCtx}%>(${ActualSpeed}\u00d7)</size></color>`
         : "";
-    const SplitTitle = (parsed) =>
-      parsed
-        .replace(/\n(?:\s*<color=#(?:[A-Fa-f0-9]{6})?00>)*\s*$/gim, "")
-        .replace(/ {10,}/, "\n")
-        .split(/\n(.*)$/s);
-    const FirstLines = SplitTitle(ParseAndScale(TitleRawStr, O));
-    const SecondLines = SplitTitle(
-      ParseAndScale(TitleRawStr, (SecondLineSizePercentage * O) / 100),
-    );
-    const FirstLine = `<size=${O}%>${Lib.WrapCJK(FirstLines[0] ?? "", CJKCharSizePercentage, O)}</size>`;
-    const SecondLine =
-      FirstLines[1] != null
-        ? `\n<size=${(SecondLineSizePercentage * O) / 100}%>${Lib.WrapCJK(SecondLines[1] ?? "", CJKCharSizePercentage, (SecondLineSizePercentage * O) / 100)}</size>${SpeedDisplay}`
+
+    const ArtistPrefix = ArtistProcessed ? `${ArtistProcessed} - ` : "";
+    const Line1 = `<size=${O}%>${ArtistPrefix}${TitleLine1 ?? ""}</size>`;
+    const Line2 =
+      TitleLine2 != null
+        ? `\n<size=${SecondCtx}%>${TitleLine2Rescaled ?? ""}</size>${SpeedDisplay}`
         : SpeedDisplay;
-    const TitleProcessed = FirstLine + SecondLine;
-    const TopTitle =
-      `<size=${O}%>${Lib.WrapCJK(ArtistProcessed, CJKCharSizePercentage, O)}${ArtistProcessed ? " - " : ""}</size>${TitleProcessed}`
-        .replace(
-          /^(?:\s*(?:<size=[^>]*>|<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>))*/,
-          (match) => {
-            return match.replace(
-              /<color=(?:"#|'#|#)([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?(?:"|')?>/gi,
-              (tag, hex6, alpha) => (alpha?.toLowerCase() === "00" ? "" : tag),
-            );
-          },
-        )
-        .replace(
-          /(\n)(?:\s*(?:<size=[^>]*>|<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>))*/,
-          (match) => {
-            return match.replace(
-              /<color=(?:"#|'#|#)([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?(?:"|')?>/gi,
-              (tag, hex6, alpha) => (alpha?.toLowerCase() === "00" ? "" : tag),
-            );
-          },
-        );
-    return TopTitle
-      ? `<line-height=${LineSpacingPercentage}%>${TopTitle}\n${AuthorProcessed}</line-height>`
-      : `${SpeedDisplay}`;
+
+    const TopTitle = (Line1 + Line2)
+      .replace(/^.*/, (M) => StripLeadingTransparent(M))
+      .replace(/(?<=\n).*/, (M) => StripLeadingTransparent(M));
+
+    const AuthorLine = AuthorProcessed
+      ? `<color=#${Hex}><size=${AuthorCtx}%>Level By ${AuthorProcessed}</size></color>\n`
+      : "";
+
+    return TopTitle.replace(/<[^>]*>/g, "").trim()
+      ? `<line-height=${LineSpacingPercentage}%>${TopTitle}\n${AuthorLine}</line-height>`
+      : SpeedDisplay;
   }
 }
 
@@ -976,11 +1022,11 @@ registerTag(
 );
 registerTag(
   "TileProgressDisplay",
-  function (Hex1, Hex2, Hex3) {
-    return LevelInfoDisplays.TileProgressDisplay(Hex1, Hex2, Hex3);
+  function (Hex1, Hex2) {
+    return LevelInfoDisplays.TileProgressDisplay(Hex1, Hex2);
   },
   true,
-  "[UI Component] Displays current tile, total tiles, and tiles left.\nParameters: (Hex1, Hex2, Hex3)\nDisplayed As: 123 / 456 (-333)",
+  "[UI Component] Displays current tile, total tiles, and tiles left.\nParameters: (Hex1, Hex2)\nDisplayed As: 123 / 456 (-333)",
 );
 registerTag(
   "TitleDisplay",
@@ -1004,7 +1050,7 @@ registerTag(
     );
   },
   true,
-  "[UI Component] Fancy title display of current loaded level.\nParameters: (Hex, LineSpacing, SpeedSizePercentage, SecondLineSizePercentage, AuthorSizePercentage)",
+  "[UI Component] Fancy title display of current loaded level.\nParameters: (Hex, OverallSizePercentage, LineSpacingPercentage, SpeedSizePercentage, SecondLineSizePercentage, AuthorSizePercentage, CJKCharSizePercentage)",
 );
 
 /*
@@ -1043,17 +1089,18 @@ class PlayerPerformanceDisplays {
     LabelHex = "ffffff",
     Label = "Perfect Combo",
     ShowThreshold = 3,
+    LineHeight = 25,
   ) {
     const ActualMaxTrackedCombos =
       MaxTrackedCombos > TotalTile() - 1 ? TotalTile() - 1 : MaxTrackedCombos;
     if (Progress() === 100)
-      return `${Lib.GradientText("MaxCombo", 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, `<size=${MovingMan("MaxCombo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${MaxCombo()}`)}
-<size=${LabelSizePercentage}%><color=#${LabelHex}>Max Combo</color></size>`;
+      return `<line-height=${LineHeight}>${Lib.GradientText("MaxCombo", 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, `<size=${MovingMan("MaxCombo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${MaxCombo()}`)}
+<size=${LabelSizePercentage}%><color=#${LabelHex}>Max Combo</color></size></line-height>`;
     else
       return Combo() >= ShowThreshold
-        ? `${Lib.GradientText("Combo", ShowThreshold, ActualMaxTrackedCombos, Hex1, Hex2, `<size=${MovingMan("Combo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${Combo()}`)}
-<size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size>`
-        : ``;
+        ? `<line-height=${LineHeight}>${Lib.GradientText("Combo", ShowThreshold, ActualMaxTrackedCombos, Hex1, Hex2, `<size=${MovingMan("Combo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${Combo()}`)}
+<size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size></line-height>`
+        : "";
   }
   static PerfectsComboDisplay(
     Hex1 = "ffffff",
@@ -1064,6 +1111,7 @@ class PlayerPerformanceDisplays {
     LabelHex = "ffffff",
     Label = "Perfects Combo",
     ShowThreshold = 5,
+    LineHeight = 25,
   ) {
     const ActualMaxTrackedCombos =
       MaxTrackedCombos > TotalTile() - 1 ? TotalTile() - 1 : MaxTrackedCombos;
@@ -1073,12 +1121,12 @@ class PlayerPerformanceDisplays {
     const MaxRange = MinRange + ActualMaxTrackedCombos;
 
     if (Progress() === 100)
-      return `${Lib.GradientText("MaxCombo", 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, `<size=${MovingMan("MaxCombo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${MaxCombo()}`)}
-<size=${LabelSizePercentage}%><color=#${LabelHex}>Max Combo</color></size>`;
+      return `<line-height=${LineHeight}>${Lib.GradientText("MaxCombo", 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, `<size=${MovingMan("MaxCombo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${MaxCombo()}`)}
+<size=${LabelSizePercentage}%><color=#${LabelHex}>Max Combo</color></size></line-height>`;
     else
       return PerfectsCombo >= ShowThreshold
-        ? `<size=${CHitRaw() >= 1 && CHitRaw() <= 3 ? MovingMan("CurTile", 100, ComboMaxSizePercentage, 100, 800, "true") : 100}%>${Lib.GradientText("CurTile", MinRange, MaxRange, Hex1, Hex2, PerfectsCombo)}</size>
-<size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size>`
+        ? `<line-height=${LineHeight}><size=${CHitRaw() >= 1 && CHitRaw() <= 3 ? MovingMan("CurTile", 100, ComboMaxSizePercentage, 100, 800, "true") : 100}%>${Lib.GradientText("CurTile", MinRange, MaxRange, Hex1, Hex2, PerfectsCombo)}</size>
+<size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size></line-height>`
         : "";
   }
   static ActualComboDisplay(
@@ -1090,6 +1138,7 @@ class PlayerPerformanceDisplays {
     LabelHex = "ffffff",
     Label = "Combo",
     ShowThreshold = 10,
+    LineHeight = 25,
   ) {
     const ActualMaxTrackedCombos =
       MaxTrackedCombos > TotalTile() - 1 ? TotalTile() - 1 : MaxTrackedCombos;
@@ -1100,12 +1149,12 @@ class PlayerPerformanceDisplays {
     const MinRange = Fixes.FixedCurTile() - ActualCombo + ShowThreshold;
     const MaxRange = MinRange + ActualMaxTrackedCombos;
     if (Progress() === 100)
-      return `${Lib.GradientText("MaxCombo", 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, `<size=${MovingMan("MaxCombo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${MaxCombo()}`)}
-<size=${LabelSizePercentage}%><color=#${LabelHex}>Max Combo</color></size>`;
+      return `<line-height=${LineHeight}>${Lib.GradientText("MaxCombo", 0, Fixes.CalculatedTotalTile(), Hex1, Hex2, `<size=${MovingMan("MaxCombo", 100, ComboMaxSizePercentage, 100, 800, "true")}%>${MaxCombo()}`)}
+<size=${LabelSizePercentage}%><color=#${LabelHex}>Max Combo</color></size></line-height>`;
     else
       return ActualCombo >= ShowThreshold
-        ? `<size=${CHitRaw() >= 1 && CHitRaw() <= 5 ? MovingMan("CurTile", 100, ComboMaxSizePercentage, 100, 800, "true") : 100}%>${Lib.GradientText("CurTile", MinRange, MaxRange, Hex1, Hex2, ActualCombo)}</size>
-<size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size>`
+        ? `<line-height=${LineHeight}><size=${CHitRaw() >= 1 && CHitRaw() <= 5 ? MovingMan("CurTile", 100, ComboMaxSizePercentage, 100, 800, "true") : 100}%>${Lib.GradientText("CurTile", MinRange, MaxRange, Hex1, Hex2, ActualCombo)}</size>
+<size=${LabelSizePercentage}%><color=#${LabelHex}>${Label}</color></size></line-height>`
         : "";
   }
   static AdaptiveComboDisplay(
@@ -1114,10 +1163,11 @@ class PlayerPerformanceDisplays {
     ComboMaxSizePercentage = 150,
     LabelSizePercentage = 35,
     LabelHex = "ffffff",
+    LineHeight = 25,
   ) {
     const IsAutoOn = IsAutoEnabled() === true;
     if (IsAutoOn)
-      return `<size=${MovingMan("Combo", 100, ComboMaxSizePercentage, 100, 800, "true")}%><color=#${Extras.RGB(100)}>${Combo()}</color>\n<size=35%>Autoplay</size>`;
+      return `<line-height=${LineHeight}><size=${MovingMan("Combo", 100, ComboMaxSizePercentage, 100, 800, "true")}%><color=#${Extras.RGB(100)}>${Combo()}</color>\n<size=35%>Autoplay</size></line-height>`;
     if (Difficulty() === "Strict" && !IsAutoOn)
       return this.PureComboDisplay(
         Hex1,
@@ -1128,6 +1178,7 @@ class PlayerPerformanceDisplays {
         LabelHex,
         "Perfect Combo",
         3,
+        LineHeight,
       );
     if (Difficulty() === "Lenient" && !IsAutoOn)
       return this.ActualComboDisplay(
@@ -1139,6 +1190,7 @@ class PlayerPerformanceDisplays {
         LabelHex,
         "Combo",
         10,
+        LineHeight,
       );
     if (Difficulty() === "Normal" && !IsAutoOn)
       return this.PerfectsComboDisplay(
@@ -1150,6 +1202,7 @@ class PlayerPerformanceDisplays {
         LabelHex,
         "Perfects Combo",
         5,
+        LineHeight,
       );
   }
 
@@ -1232,19 +1285,22 @@ registerTag(
     LabelHex,
     Label,
     ShowThreshold,
+    LineHeight,
   ) {
     return PlayerPerformanceDisplays.PureComboDisplay(
       Hex1,
       Hex2,
       MaxTrackedCombos,
+      ComboMaxSizePercentage,
       LabelSizePercentage,
       LabelHex,
       Label,
       ShowThreshold,
+      LineHeight,
     );
   },
   true,
-  "[UI Component] Displayes Pure Perfect combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold)",
+  "[UI Component] Displays Pure Perfect combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, ComboMaxSizePercentage, LabelSizePercentage, LabelHex, Label, ShowThreshold, LineHeight)",
 );
 registerTag(
   "PerfectsComboDisplay",
@@ -1252,23 +1308,27 @@ registerTag(
     Hex1,
     Hex2,
     MaxTrackedCombos,
+    ComboMaxSizePercentage,
     LabelSizePercentage,
     LabelHex,
     Label,
     ShowThreshold,
+    LineHeight,
   ) {
     return PlayerPerformanceDisplays.PerfectsComboDisplay(
       Hex1,
       Hex2,
       MaxTrackedCombos,
+      ComboMaxSizePercentage,
       LabelSizePercentage,
       LabelHex,
       Label,
       ShowThreshold,
+      LineHeight,
     );
   },
   true,
-  "[UI Component] Displayes Perfects (EPerfect, Perfect, LPerfect) combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold)",
+  "[UI Component] Displays Perfects (EPerfect, Perfect, LPerfect) combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, ComboMaxSizePercentage, LabelSizePercentage, LabelHex, Label, ShowThreshold, LineHeight)",
 );
 registerTag(
   "ActualComboDisplay",
@@ -1276,43 +1336,62 @@ registerTag(
     Hex1,
     Hex2,
     MaxTrackedCombos,
+    ComboMaxSizePercentage,
     LabelSizePercentage,
     LabelHex,
     Label,
     ShowThreshold,
+    LineHeight,
   ) {
     return PlayerPerformanceDisplays.ActualComboDisplay(
       Hex1,
       Hex2,
       MaxTrackedCombos,
+      ComboMaxSizePercentage,
       LabelSizePercentage,
       LabelHex,
       Label,
       ShowThreshold,
+      LineHeight,
     );
   },
   true,
-  "[UI Component] Displayes Actual (Counts up unless Early!!, Late!!, Overload..., Miss... hit) combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, LabelSizePercentage, LabelHex, Label, ShowThreshold)",
+  "[UI Component] Displays Actual (Counts up unless Early!!, Late!!, Overload..., Miss... hit) combo.\nParameters: (Hex1, Hex2, MaxTrackedCombos, ComboMaxSizePercentage, LabelSizePercentage, LabelHex, Label, ShowThreshold, LineHeight)",
 );
 registerTag(
   "AdaptiveComboDisplay",
-  function (Hex1, Hex2) {
-    return PlayerPerformanceDisplays.AdaptiveComboDisplay(Hex1, Hex2);
+  function (
+    Hex1,
+    Hex2,
+    ComboMaxSizePercentage,
+    LabelSizePercentage,
+    LabelHex,
+    LineHeight,
+  ) {
+    return PlayerPerformanceDisplays.AdaptiveComboDisplay(
+      Hex1,
+      Hex2,
+      ComboMaxSizePercentage,
+      LabelSizePercentage,
+      LabelHex,
+      LineHeight,
+    );
   },
   true,
-  "[UI Component] Displayess combo based on difficulty and Autoplay status.\nParameters: (Hex1, Hex2)",
+  "[UI Component] Displays combo based on difficulty and Autoplay status.\nParameters: (Hex1, Hex2)",
 );
 registerTag(
   "AdaptiveStatusLabel",
-  function (Hex1, Hex2, ProgressDecimals) {
+  function (Hex1, Hex2, ProgressDecimals, MarginDecimals) {
     return PlayerPerformanceDisplays.AdaptiveStatusLabel(
       Hex1,
       Hex2,
       ProgressDecimals,
+      MarginDecimals,
     );
   },
   true,
-  "[UI Component] Displays a status label based on current performance, difficulty, and Margin Scale.\nParameters: (Hex1, Hex2, ProgressDecimals)",
+  "[UI Component] Displays a status label based on current performance, difficulty, and Margin Scale.\nParameters: (Hex1, Hex2, ProgressDecimals, MarginDecimals)",
 );
 
 /*
@@ -1697,7 +1776,7 @@ ${rankJudge(finalScore)}\n\n<color=#ffffff><size=80%>Great<size=70%> -${Lib.Pad(
     // Current DX Score Type with DX Score Rating
     if (style === "DXS1") {
       return `<size=75%>DX Score <size=65%><color=#919191>(Current Type)</color>
-<size=  >${DXScore} <size=100%>/ ${maxDXScore}\n<size=60%>${parseFloat(DXScorePercent.toFixed(2))}%
+<size=150>${DXScore} <size=100%>/ ${maxDXScore}\n<size=60%>${parseFloat(DXScorePercent.toFixed(2))}%
 <size=50%>${DXStarJudge(DXScorePercent)}`;
     }
 
