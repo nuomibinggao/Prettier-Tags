@@ -1,6 +1,6 @@
 /*
 https://github.com/nuomibinggao/Prettier-Tags
-Version I Release 2
+Version I Release 2 Iteration 1
 For Overlayer v3.49.0 (Beta) and XPerfect v1.3.1 (Optional)
 */
 
@@ -166,18 +166,6 @@ class Lib {
 
     return `<color=#${Hex}>${Text}</color>`;
   } // This function is used when Native Tags are not avaliable for ColorRange, only use when neccessary.
-
-  static ParseTitleTags(Tag) {
-    return Tag
-      ? Tag.replace(/color\s*=\s*(['\"])(.*?)\1/gi, "color=$2") // normalize quoted color attributes: color="ff00ff" or color='ff00ff' -> color=ff00ff
-          .replace(/<\/?size=[^>]*>/g, "") // strip <size=...> tags (prevent leftover sizing from source tags)
-          .replace(
-            /<color=#([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?>/g,
-            (match, hex6, alpha) =>
-              alpha === "00" ? match : `<color=#${hex6}>`,
-          ) // if alpha === '00' (fully transparent) keep original tag so later cleanup can remove empty transparent lines; otherwise normalize to 6-digit hex
-      : "";
-  }
 
   static RawSongPercentage(Decimals = 14) {
     // 14 decimal places is the default of Overlayer mod native tags
@@ -900,51 +888,62 @@ class LevelInfoDisplays {
 
   static TitleDisplay(
     Hex = "ffffff",
+    OverallSizePercentage = 100,
     LineSpacingPercentage = 65,
     SpeedSizePercentage = 70,
     SecondLineSizePercentage = 80,
     AuthorSizePercentage = 65,
     CJKCharSizePercentage = 110,
   ) {
-    const ArtistProcessed = Lib.ParseTitleTags(ArtistRaw());
-    const TitleUnprocessed = Lib.ParseTitleTags(TitleRaw());
-    const AuthorUnprocessed = Lib.ParseTitleTags(AuthorRaw());
-
+    const O = OverallSizePercentage;
+    const ParseAndScale = (str, contextSize) =>
+      str
+        ? str
+            .replace(/color\s*=\s*(['\"])(.*?)\1/gi, "color=$2")
+            .replace(
+              /<size=(\d+(?:\.\d+)?)(?!%)>/gi,
+              (_, val) =>
+                `<size=${Math.round((parseFloat(val) / 85) * contextSize)}%>`,
+            )
+            .replace(
+              /<color=#([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?>/g,
+              (match, hex6, alpha) =>
+                alpha === "00" ? match : `<color=#${hex6}>`,
+            )
+        : "";
+    const ArtistProcessed = ParseAndScale(ArtistRaw(), O);
+    const TitleRawStr = TitleRaw();
+    const AuthorUnprocessed = ParseAndScale(
+      AuthorRaw(),
+      (AuthorSizePercentage * O) / 100,
+    );
     const AuthorProcessed = AuthorUnprocessed
-      ? `<color=#${Hex}><size=${AuthorSizePercentage}%>Level By ${Lib.WrapCJK(AuthorUnprocessed, CJKCharSizePercentage, AuthorSizePercentage)}</size></color>\n`
+      ? `<color=#${Hex}><size=${(AuthorSizePercentage * O) / 100}%>Level By ${Lib.WrapCJK(AuthorUnprocessed, CJKCharSizePercentage, (AuthorSizePercentage * O) / 100)}</size></color>\n`
       : "";
-
     const ActualSpeed = Pitch() * EditorPitch();
     const SpeedDisplay =
       ActualSpeed !== 1
-        ? ` <color=#${Hex}><size=${SpeedSizePercentage}%>(${ActualSpeed}\u00d7)</size></color>`
+        ? ` <color=#${Hex}><size=${(SpeedSizePercentage * O) / 100}%>(${ActualSpeed}\u00d7)</size></color>`
         : "";
-
-    // Split into first line and everything after so each part
-    // can be wrapped with the correct multiplied context size
-    const TitleLines = TitleUnprocessed.replace(
-      /\n(?:\s*<color=#(?:[A-Fa-f0-9]{6})?00>)*\s*$/gim,
-      "",
-    )
-      .replace(/ {10,}/, "\n")
-      .split(/\n(.*)$/s); // [firstLine, rest] — split on first \n only
-
-    const FirstLine = Lib.WrapCJK(
-      TitleLines[0] ?? "",
-      CJKCharSizePercentage,
-      100,
+    const SplitTitle = (parsed) =>
+      parsed
+        .replace(/\n(?:\s*<color=#(?:[A-Fa-f0-9]{6})?00>)*\s*$/gim, "")
+        .replace(/ {10,}/, "\n")
+        .split(/\n(.*)$/s);
+    const FirstLines = SplitTitle(ParseAndScale(TitleRawStr, O));
+    const SecondLines = SplitTitle(
+      ParseAndScale(TitleRawStr, (SecondLineSizePercentage * O) / 100),
     );
+    const FirstLine = `<size=${O}%>${Lib.WrapCJK(FirstLines[0] ?? "", CJKCharSizePercentage, O)}</size>`;
     const SecondLine =
-      TitleLines[1] != null
-        ? `\n<size=${SecondLineSizePercentage}%>${Lib.WrapCJK(TitleLines[1], CJKCharSizePercentage, SecondLineSizePercentage)}${SpeedDisplay}`
-        : SpeedDisplay; // append speed to first line if no second line exists
-
+      FirstLines[1] != null
+        ? `\n<size=${(SecondLineSizePercentage * O) / 100}%>${Lib.WrapCJK(SecondLines[1] ?? "", CJKCharSizePercentage, (SecondLineSizePercentage * O) / 100)}</size>${SpeedDisplay}`
+        : SpeedDisplay;
     const TitleProcessed = FirstLine + SecondLine;
-
     const TopTitle =
-      `${Lib.WrapCJK(ArtistProcessed, CJKCharSizePercentage, 100)}${ArtistProcessed ? " - " : ""}${TitleProcessed}`
+      `<size=${O}%>${Lib.WrapCJK(ArtistProcessed, CJKCharSizePercentage, O)}${ArtistProcessed ? " - " : ""}</size>${TitleProcessed}`
         .replace(
-          /^(?:\s*<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>)*/,
+          /^(?:\s*(?:<size=[^>]*>|<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>))*/,
           (match) => {
             return match.replace(
               /<color=(?:"#|'#|#)([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?(?:"|')?>/gi,
@@ -953,7 +952,7 @@ class LevelInfoDisplays {
           },
         )
         .replace(
-          /(\n)(?:\s*<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>)*/,
+          /(\n)(?:\s*(?:<size=[^>]*>|<color=(?:"#|'#|#)[A-Fa-f0-9]{6}(?:[A-Fa-f0-9]{2})?(?:"|')?>))*/,
           (match) => {
             return match.replace(
               /<color=(?:"#|'#|#)([A-Fa-f0-9]{6})([A-Fa-f0-9]{2})?(?:"|')?>/gi,
@@ -961,7 +960,6 @@ class LevelInfoDisplays {
             );
           },
         );
-
     return TopTitle
       ? `<line-height=${LineSpacingPercentage}%>${TopTitle}\n${AuthorProcessed}</line-height>`
       : `${SpeedDisplay}`;
@@ -988,6 +986,7 @@ registerTag(
   "TitleDisplay",
   function (
     Hex,
+    OverallSizePercentage,
     LineSpacing,
     SpeedSizePercentage,
     SecondLineSizePercentage,
@@ -996,6 +995,7 @@ registerTag(
   ) {
     return LevelInfoDisplays.TitleDisplay(
       Hex,
+      OverallSizePercentage,
       LineSpacing,
       SpeedSizePercentage,
       SecondLineSizePercentage,
